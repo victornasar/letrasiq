@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+
+# Font build artifacts (keep latest preview PNGs)
+fonts/*/build/*.otf
+fonts/*/build/*.ttf
+fonts/*/build/*.woff2
+fonts/*/build/*.ufo/
+fonts/*/build/ufo/
+!fonts/*/build/previews/
+!fonts/*/build/previews/**/*.png

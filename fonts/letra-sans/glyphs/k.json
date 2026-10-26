@@ -1,0 +1,48 @@
+{
+  "type": "parametric",
+  "skeleton": [
+    {
+      "kind": "stroke",
+      "points": [
+        [
+          0,
+          800.0
+        ],
+        [
+          0,
+          0.0
+        ]
+      ],
+      "closed": false
+    },
+    {
+      "kind": "stroke",
+      "points": [
+        [
+          354.73199999999997,
+          500.0
+        ],
+        [
+          0,
+          275.0
+        ]
+      ],
+      "closed": false
+    },
+    {
+      "kind": "stroke",
+      "points": [
+        [
+          0,
+          275.0
+        ],
+        [
+          354.73199999999997,
+          0.0
+        ]
+      ],
+      "closed": false
+    }
+  ],
+  "overrides": {}
+}
