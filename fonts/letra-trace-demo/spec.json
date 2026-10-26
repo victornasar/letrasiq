@@ -1,0 +1,21 @@
+{
+  "name": "letra-trace-demo",
+  "version": "0.1.0",
+  "style_name": "Regular",
+  "upm": 1000,
+  "ascender": 800,
+  "descender": -200,
+  "x_height": 500,
+  "cap_height": 700,
+  "baseline": 0,
+  "weight": 0.45,
+  "contrast": 0.15,
+  "width": 0.55,
+  "slant": 0.0,
+  "serif_style": "none",
+  "terminal_style": "flat",
+  "corner_roundness": 0.2,
+  "aperture": 0.55,
+  "mood": "neutral",
+  "notes": "Stage 1 neo-grotesque sample face for LetrasIQ."
+}

@@ -11,9 +11,11 @@ import typer
 from letrasiq import __version__
 from letrasiq.check import check_font, format_check_result
 from letrasiq.compare import CompareError, compare_font
+from letrasiq.import_ufo import ImportError_, import_ufo
 from letrasiq.pipeline import build_font, create_font, font_dir, fonts_root, fork_font
 from letrasiq.preview import render_specimen
 from letrasiq.spec import FontSpec
+from letrasiq.trace import TraceError, trace_glyph
 
 app = typer.Typer(
     name="letrasiq",
@@ -120,21 +122,56 @@ def cmd_fork(
     typer.echo(f"Forked {name} → {d}")
 
 
+@app.command("trace")
+def cmd_trace(
+    name: str = typer.Argument(..., help="Font name"),
+    glyph: str = typer.Argument(..., help="Glyph name, e.g. g or ampersand"),
+    image: Path = typer.Argument(..., help="Sketch image path"),
+    fonts: Optional[Path] = typer.Option(None, "--fonts", help="Fonts root directory"),
+    no_lock: bool = typer.Option(False, "--no-lock", help="Do not add glyph to locked.txt"),
+    threshold: int = typer.Option(128, "--threshold", help="Binarization threshold 0-255"),
+) -> None:
+    """Vectorize a sketch with potrace into a custom glyph."""
+    try:
+        dest = trace_glyph(
+            name,
+            glyph,
+            image,
+            root=fonts or fonts_root(),
+            lock=not no_lock,
+            threshold=threshold,
+        )
+    except TraceError as e:
+        typer.echo(f"trace failed: {e}", err=True)
+        raise typer.Exit(1) from e
+    typer.echo(str(dest))
+
+
+@app.command("import-ufo")
+def cmd_import_ufo(
+    name: str = typer.Argument(..., help="Font name"),
+    ufo: Path = typer.Argument(..., help="Path to a .ufo directory"),
+    fonts: Optional[Path] = typer.Option(None, "--fonts", help="Fonts root directory"),
+    glyphs: Optional[str] = typer.Option(
+        None, "--glyphs", help="Comma-separated glyph names (default: all)"
+    ),
+) -> None:
+    """Import glyphs from FontForge/other UFO editors; lock them."""
+    only = [g.strip() for g in glyphs.split(",")] if glyphs else None
+    try:
+        imported = import_ufo(
+            name, ufo, root=fonts or fonts_root(), glyphs=only
+        )
+    except ImportError_ as e:
+        typer.echo(f"import-ufo failed: {e}", err=True)
+        raise typer.Exit(1) from e
+    typer.echo(f"imported {len(imported)} glyph(s): {', '.join(imported[:20])}"
+               + ("…" if len(imported) > 20 else ""))
+
+
 @app.command("version")
 def cmd_version() -> None:
     typer.echo(__version__)
-
-
-@app.command("trace", hidden=True)
-def cmd_trace_stub() -> None:
-    typer.echo("trace: available in Stage 3")
-    raise typer.Exit(1)
-
-
-@app.command("import-ufo", hidden=True)
-def cmd_import_stub() -> None:
-    typer.echo("import-ufo: available in Stage 3")
-    raise typer.Exit(1)
 
 
 if __name__ == "__main__":

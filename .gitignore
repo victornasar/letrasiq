@@ -1,21 +1,56 @@
+# Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
 .eggs/
 dist/
-build/
+/build/
+*.egg
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Virtualenvs
 .venv/
 venv/
-.env
+ENV/
 
-# Font build artifacts (keep latest preview PNGs)
-fonts/*/build/*.otf
-fonts/*/build/*.ttf
-fonts/*/build/*.woff2
-fonts/*/build/*.ufo/
-fonts/*/build/ufo/
+# Secrets / local env (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets.json
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*~
+*.swp
+.idea/
+.vscode/
+*.code-workspace
+
+# Font build artifacts — ignore everything under build/, then keep preview PNGs
+fonts/*/build/**
 !fonts/*/build/previews/
+!fonts/*/build/previews/**
+fonts/*/build/previews/**
 !fonts/*/build/previews/**/*.png
+
+# Compiled fonts if dropped outside fonts/*/build/
+*.otf
+*.ttf
+*.woff
+*.woff2
+
+# UFO packages (directories) anywhere
+*.ufo/

@@ -149,14 +149,18 @@ def _punct(m: dict[str, float]) -> dict[str, GlyphSource]:
             name=name, type="parametric", skeleton=list(strokes), width=width
         )
 
-    g("period", _S((cx, base + 20), (cx, base + 20)))
+    # Dots need a short stub so stroke expansion yields a real outline
+    def _dot(x: float, y: float) -> Stroke:
+        return _S((x - 1, y), (x + 1, y))
+
+    g("period", _dot(cx, base + 40))
     g("comma", _S((cx, base + 40), (cx, base + 20), (cx - 15, base - 40)))
-    g("exclam", _S((cx, cap), (cx, base + 140)), _S((cx, base + 30), (cx, base + 30)))
+    g("exclam", _S((cx, cap), (cx, base + 140)), _dot(cx, base + 40))
     qmid = cap * 0.45
     g("question", _S((w * 0.15, cap * 0.75), (w * 0.35, cap), (w * 0.7, cap), (w, cap * 0.7), (cx, qmid), (cx, base + 140)),
-      _S((cx, base + 30), (cx, base + 30)))
-    g("colon", _S((cx, x * 0.7), (cx, x * 0.7)), _S((cx, base + 40), (cx, base + 40)))
-    g("semicolon", _S((cx, x * 0.7), (cx, x * 0.7)), _S((cx, base + 40), (cx, base + 20), (cx - 15, base - 40)))
+      _dot(cx, base + 40))
+    g("colon", _dot(cx, x * 0.7), _dot(cx, base + 40))
+    g("semicolon", _dot(cx, x * 0.7), _S((cx, base + 40), (cx, base + 20), (cx - 15, base - 40)))
     g("quotesingle", _S((cx, cap), (cx, cap - 120)))
     g("quotedbl", _S((w * 0.3, cap), (w * 0.3, cap - 120)), _S((w * 0.7, cap), (w * 0.7, cap - 120)))
     g("parenleft", _S((w * 0.8, cap), (w * 0.2, cap * 0.7), (w * 0.2, cap * 0.3), (w * 0.8, base)))
