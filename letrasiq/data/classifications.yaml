@@ -1,0 +1,345 @@
+# LetrasIQ font classification taxonomy (brand-free).
+# Used by Claude + resolve() to map briefs → spec knobs.
+# Do NOT put commercial font names in this file.
+
+sans-serif:
+  summary: "Sans-serif faces without serifs; workhorse text and UI."
+  subtypes:
+    neo-grotesque:
+      summary: "Neutral, industrial sans with low contrast and fairly closed apertures."
+      traits: [low-contrast, closed-aperture, vertical-terminals, even-rhythm, neutral]
+      inspired_by_traits: ["mid-century industrial signage", "corporate identity sans"]
+      defaults:
+        weight: 0.45
+        contrast: 0.15
+        width: 0.55
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.2
+        aperture: 0.45
+      construction:
+        - "Keep C/G/S terminals near-vertical"
+        - "Share bar logic across E/F/L"
+        - "O/C/G bowls should feel related"
+      engine_support: full
+
+    grotesque:
+      summary: "Earlier grotesque sans — slightly clumsier, more character, modest contrast."
+      traits: [low-contrast, irregular-rhythm, closed-aperture, sturdy]
+      inspired_by_traits: ["19th-century jobbing sans", "wood-type poster sans"]
+      defaults:
+        weight: 0.5
+        contrast: 0.2
+        width: 0.58
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.15
+        aperture: 0.4
+      construction:
+        - "Allow slightly uneven widths (S tighter, M/W wider)"
+        - "Less optically polished joins than neo-grotesque"
+      engine_support: full
+
+    geometric:
+      summary: "Circles and straight lines; modular, often display-leaning."
+      traits: [near-monoline, circular-bowls, modular, open-or-closed]
+      inspired_by_traits: ["Bauhaus geometry", "compass-and-ruler construction"]
+      defaults:
+        weight: 0.42
+        contrast: 0.08
+        width: 0.6
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.35
+        aperture: 0.55
+      construction:
+        - "Prefer circular O/o/c skeletons"
+        - "A often a triangle; M/N geometric"
+        - "Single-story a is common"
+      engine_support: full
+
+    humanistic:
+      summary: "Calligraphic sans with open apertures and subtle contrast."
+      traits: [open-aperture, mild-contrast, calligraphic, warm]
+      inspired_by_traits: ["renaissance writing influence", "readable book sans"]
+      defaults:
+        weight: 0.44
+        contrast: 0.28
+        width: 0.58
+        slant: 0.0
+        serif_style: none
+        terminal_style: sheared
+        corner_roundness: 0.25
+        aperture: 0.7
+      construction:
+        - "Open C/S/a counters"
+        - "Slightly modulated stems"
+        - "Double-story a preferred"
+      engine_support: partial
+
+    gothic:
+      summary: "American gothic sans — condensed, sturdy, clear at small sizes."
+      traits: [condensed, sturdy, low-contrast, utilitarian]
+      inspired_by_traits: ["newspaper headline sans", "sign-painter gothic"]
+      defaults:
+        weight: 0.48
+        contrast: 0.12
+        width: 0.4
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.1
+        aperture: 0.5
+      construction:
+        - "Narrow capitals; tight sidebearings"
+        - "Tall x-height relative to width"
+      engine_support: full
+
+serif:
+  summary: "Seriffed text faces; contrast and serif shape define the era."
+  subtypes:
+    old-style:
+      summary: "Diagonal stress, bracketed serifs, moderate contrast — book text."
+      traits: [bracketed-serifs, diagonal-stress, moderate-contrast, readable]
+      inspired_by_traits: ["venetian and garalde book typography"]
+      defaults:
+        weight: 0.42
+        contrast: 0.4
+        width: 0.58
+        slant: 0.0
+        serif_style: bracketed
+        terminal_style: round
+        corner_roundness: 0.3
+        aperture: 0.55
+      construction:
+        - "Serifs on stem ends; soft joins"
+        - "Axis slightly tilted in O/e"
+      engine_support: partial
+
+    transitional:
+      summary: "Sharper than old-style, vertical stress emerging, refined serifs."
+      traits: [vertical-stress, refined-serifs, rising-contrast]
+      inspired_by_traits: ["enlightenment transitional book faces"]
+      defaults:
+        weight: 0.43
+        contrast: 0.5
+        width: 0.55
+        slant: 0.0
+        serif_style: bracketed
+        terminal_style: flat
+        corner_roundness: 0.2
+        aperture: 0.5
+      construction:
+        - "More vertical O axis than old-style"
+        - "Ball or teardrop terminals optional on a/c/f/j/r"
+      engine_support: partial
+
+    modern:
+      summary: "High contrast, vertical stress, hairline serifs — elegant and fragile."
+      traits: [high-contrast, vertical-stress, hairline-serifs, elegant]
+      inspired_by_traits: ["didone fashion and editorial display"]
+      defaults:
+        weight: 0.4
+        contrast: 0.75
+        width: 0.52
+        slant: 0.0
+        serif_style: hairline
+        terminal_style: ball
+        corner_roundness: 0.1
+        aperture: 0.45
+      construction:
+        - "Thick verticals, thin horizontals"
+        - "Flat thin serifs; ball terminals on some lowercase"
+      engine_support: partial
+
+    slab:
+      summary: "Heavy rectangular serifs; sturdy, often geometric or clarendon-like."
+      traits: [slab-serifs, low-to-mid-contrast, sturdy, display-capable]
+      inspired_by_traits: ["egyptian slab posters", "clarendon-like text slabs"]
+      defaults:
+        weight: 0.5
+        contrast: 0.2
+        width: 0.6
+        slant: 0.0
+        serif_style: slab
+        terminal_style: flat
+        corner_roundness: 0.15
+        aperture: 0.5
+      construction:
+        - "Serifs ≈ stem thickness"
+        - "Keep joins simple; avoid delicate brackets"
+      engine_support: full
+
+monospace:
+  summary: "Fixed-pitch faces for code and tabular work."
+  subtypes:
+    sans-mono:
+      summary: "Monospace sans — clear, coding-first."
+      traits: [fixed-pitch, low-contrast, clear-at-small-size]
+      inspired_by_traits: ["terminal and IDE coding faces"]
+      defaults:
+        weight: 0.45
+        contrast: 0.1
+        width: 0.5
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.15
+        aperture: 0.6
+      construction:
+        - "All advances equal (override spacing to constant width)"
+        - "Distinguish 0/O, 1/l/I carefully"
+      engine_support: partial
+
+    slab-mono:
+      summary: "Monospace with slab serifs — typewriter flavor."
+      traits: [fixed-pitch, slab-serifs, typewriter]
+      inspired_by_traits: ["mechanical typewriter texture"]
+      defaults:
+        weight: 0.48
+        contrast: 0.15
+        width: 0.5
+        slant: 0.0
+        serif_style: slab
+        terminal_style: flat
+        corner_roundness: 0.1
+        aperture: 0.55
+      construction:
+        - "Equal advances; slab feet on stems"
+        - "Slightly loose fitting inside the mono cell"
+      engine_support: partial
+
+display:
+  summary: "Attention-getting faces; less concern for long reading."
+  subtypes:
+    compressed:
+      summary: "Very narrow display sans or serif for headlines."
+      traits: [extra-condensed, high-x-height, poster]
+      inspired_by_traits: ["compressed poster lettering"]
+      defaults:
+        weight: 0.5
+        contrast: 0.15
+        width: 0.28
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.05
+        aperture: 0.45
+      construction:
+        - "Extreme width compression; watch counters"
+        - "Tighten sidebearings aggressively"
+      engine_support: partial
+
+    ultra-bold:
+      summary: "Heavy weight display; counters are precious."
+      traits: [ultra-bold, tight-counters, impact]
+      inspired_by_traits: ["fat-face and black poster styles"]
+      defaults:
+        weight: 0.85
+        contrast: 0.2
+        width: 0.65
+        slant: 0.0
+        serif_style: none
+        terminal_style: flat
+        corner_roundness: 0.25
+        aperture: 0.35
+      construction:
+        - "Open counters enough to survive bolding"
+        - "Shorten extenders if needed"
+      engine_support: partial
+
+    decorative:
+      summary: "Ornamented or unusual construction — mostly custom glyphs."
+      traits: [ornamental, expressive, low-text-fitness]
+      inspired_by_traits: ["ornamented titling and novelty lettering"]
+      defaults:
+        weight: 0.5
+        contrast: 0.3
+        width: 0.6
+        slant: 0.0
+        serif_style: none
+        terminal_style: round
+        corner_roundness: 0.4
+        aperture: 0.5
+      construction:
+        - "Prefer custom/traced glyphs over pure parametric"
+        - "Consistency of ornament matters more than metrics"
+      engine_support: stub
+
+script:
+  summary: "Connecting or cursive letterforms. Parametric engine is a poor fit."
+  subtypes:
+    formal:
+      summary: "Formal script / copperplate-like. Use custom or trace."
+      traits: [cursive, high-contrast, connecting]
+      inspired_by_traits: ["formal invitation script"]
+      defaults:
+        weight: 0.4
+        contrast: 0.6
+        width: 0.55
+        slant: 0.35
+        serif_style: none
+        terminal_style: ball
+        corner_roundness: 0.5
+        aperture: 0.5
+      construction:
+        - "Do not expect parametric skeletons to look like real script"
+        - "Trace sketches or import UFO outlines; lock glyphs"
+      engine_support: stub
+
+    casual:
+      summary: "Informal handwriting / brush script. Prefer custom glyphs."
+      traits: [handwritten, informal, irregular]
+      inspired_by_traits: ["casual sign-painting and brush lettering"]
+      defaults:
+        weight: 0.48
+        contrast: 0.25
+        width: 0.6
+        slant: 0.2
+        serif_style: none
+        terminal_style: round
+        corner_roundness: 0.55
+        aperture: 0.6
+      construction:
+        - "Irregularity is a feature — use traced custom glyphs"
+      engine_support: stub
+
+blackletter:
+  summary: "Broken-script historical forms. Parametric engine unsupported."
+  subtypes:
+    textura:
+      summary: "Dense vertical blackletter texture."
+      traits: [dense, vertical, historical]
+      inspired_by_traits: ["textura manuscript and early print"]
+      defaults:
+        weight: 0.55
+        contrast: 0.35
+        width: 0.45
+        slant: 0.0
+        serif_style: none
+        terminal_style: sheared
+        corner_roundness: 0.05
+        aperture: 0.3
+      construction:
+        - "Stub — use custom outlines; warn the human"
+      engine_support: stub
+
+    fraktur:
+      summary: "Fraktur-style blackletter with more flourish."
+      traits: [flourished, historical, dense]
+      inspired_by_traits: ["fraktur book and display lettering"]
+      defaults:
+        weight: 0.52
+        contrast: 0.4
+        width: 0.5
+        slant: 0.0
+        serif_style: none
+        terminal_style: sheared
+        corner_roundness: 0.1
+        aperture: 0.35
+      construction:
+        - "Stub — prefer import-ufo or trace; lock everything"
+      engine_support: stub

@@ -36,12 +36,18 @@ def cmd_new(
     fonts: Optional[Path] = typer.Option(None, "--fonts", help="Fonts root directory"),
 ) -> None:
     """Create a font folder from a style spec."""
+    from letrasiq.classification import apply_classification_defaults
+
     data = json.loads(Path(spec).read_text(encoding="utf-8"))
     if "name" not in data:
         data["name"] = name
+    # Taxonomy fills knobs not present in the JSON; explicit keys win.
+    data = apply_classification_defaults(data, only_missing=True)
     font_spec = FontSpec.from_dict(data)
     d = create_font(name, font_spec, root=fonts or fonts_root())
     typer.echo(f"Created {d}")
+    for w in font_spec.classification_warnings():
+        typer.echo(f"warning: {w}", err=True)
 
 
 @app.command("build")

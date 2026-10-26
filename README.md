@@ -51,6 +51,8 @@ Uppercase glyph *files* use UFO-style names (`A_.json`) so they do not collide w
 
 Sample face: `fonts/letra-sans/` (neo-grotesque MVP).
 
+Font types/subtypes live in `letrasiq/data/classifications.yaml`. Set `classification` + `subtype` in `spec.json` so `new` can fill default knobs; see `CLAUDE.md`.
+
 ## Example session (Claude Code)
 
 **Human:** Make a friendly neo-grotesque called “letra-sans”, medium weight, a bit wide.

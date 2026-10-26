@@ -69,6 +69,9 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
     for err in spec.validate():
         result.errors.append(f"spec: {err}")
 
+    for w in spec.classification_warnings():
+        result.warnings.append(w)
+
     if spec.name != name:
         result.warnings.append(f"spec.name ({spec.name!r}) != folder name ({name!r})")
 

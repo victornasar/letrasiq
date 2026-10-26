@@ -17,5 +17,7 @@
   "corner_roundness": 0.2,
   "aperture": 0.55,
   "mood": "sturdy",
-  "notes": "Fork of letra-sans; heavier weight for Stage 2 demo."
+  "notes": "Fork of letra-sans; heavier weight for Stage 2 demo.",
+  "classification": "sans-serif",
+  "subtype": "neo-grotesque"
 }

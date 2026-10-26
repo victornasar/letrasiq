@@ -17,5 +17,7 @@
   "corner_roundness": 0.2,
   "aperture": 0.55,
   "mood": "neutral",
-  "notes": "Stage 1 neo-grotesque sample face for LetrasIQ."
+  "notes": "Stage 1 neo-grotesque sample face for LetrasIQ.",
+  "classification": "sans-serif",
+  "subtype": "neo-grotesque"
 }

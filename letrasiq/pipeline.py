@@ -43,6 +43,9 @@ def font_dir(name: str, root: Path | None = None) -> Path:
 
 
 def create_font(name: str, spec: FontSpec, root: Path | None = None) -> Path:
+    from letrasiq.classification import fill_spec_from_taxonomy
+
+    fill_spec_from_taxonomy(spec, overwrite=False)
     errors = spec.validate()
     if errors:
         raise ValueError("Invalid spec: " + "; ".join(errors))

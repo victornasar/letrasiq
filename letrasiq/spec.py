@@ -41,6 +41,8 @@ class FontSpec:
     aperture: float = 0.55
     mood: str = "neutral"
     notes: str = ""
+    classification: str | None = None
+    subtype: str | None = None
     extras: dict[str, Any] = field(default_factory=dict)
 
     def family_name(self) -> str:
@@ -79,6 +81,11 @@ class FontSpec:
         if self.ascender <= self.cap_height:
             errors.append("ascender should be >= cap_height")
         return errors
+
+    def classification_warnings(self) -> list[str]:
+        from letrasiq.classification import classification_warnings
+
+        return classification_warnings(self.classification, self.subtype)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

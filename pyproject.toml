@@ -18,6 +18,7 @@ dependencies = [
   "skia-pathops>=0.8",
   "Pillow>=10.0",
   "brotli>=1.1",
+  "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]
