@@ -3,20 +3,22 @@
 from __future__ import annotations
 
 import math
+import subprocess
+import sys
 from importlib import resources
 from pathlib import Path
 from typing import Any
 
 import pathops
 import ufoLib2
-from fontTools.ttLib import TTFont, newTable
-from fontTools.ttLib.tables.ttProgram import Program
+from fontTools.ttLib import TTFont
 
 from letrasiq.outline import path_bounds
 from letrasiq.spec import FontSpec
 
 
 MIN_LINE_SPACING = 1.2
+OTF_AUTOHINT = "import sys; from afdko.otfautohint.__main__ import main; sys.exit(main(sys.argv[1:]))"
 DEFAULT_REPOSITORY = "https://github.com/victornasar/letrasiq"
 
 
@@ -39,6 +41,8 @@ def build_ufo(
     anchors: dict[str, dict[str, Any]] | None = None,
     features: str = "",
     categories: dict[str, str] | None = None,
+    design_overshoot: float = 0,
+    stems: tuple[float, float] | None = None,
 ) -> ufoLib2.Font:
     ufo = ufoLib2.Font()
     ufo.info.familyName = spec.family_name()
@@ -87,6 +91,17 @@ def build_ufo(
             g.unicodes = [cp, 0x00A0] if name == "space" else [cp]
         for anchor, (x, y) in (anchors or {}).get(name, {}).items():
             g.appendAnchor({"name": anchor, "x": x, "y": y})
+
+    # Alignment zones: the autohinter keeps these heights crisp, and overshoot within them.
+    overshoot = design_overshoot or 12
+    ufo.info.postscriptBlueValues = [
+        -overshoot, 0, spec.x_height, spec.x_height + overshoot, spec.cap_height, spec.cap_height + overshoot,
+        spec.ascender, spec.ascender + overshoot,
+    ]
+    ufo.info.postscriptOtherBlues = [spec.descender - overshoot, spec.descender]
+    if stems:
+        ufo.info.postscriptStemSnapV = [round(stems[0])]
+        ufo.info.postscriptStemSnapH = [round(stems[1])]
 
     if fixed_advance:
         ufo.info.postscriptIsFixedPitch = True
@@ -184,8 +199,10 @@ def compile_otf_ttf(
                 newest.replace(exact)
             produced[ext] = exact
 
+    if "otf" in produced:
+        _autohint_otf(produced["otf"])
     if "ttf" in produced:
-        _set_unhinted_rendering(produced["ttf"])
+        _autohint_ttf(produced["ttf"])
         woff2 = out_dir / f"{stem}.woff2"
         _ttf_to_woff2(produced["ttf"], woff2)
         produced["woff2"] = woff2
@@ -194,18 +211,29 @@ def compile_otf_ttf(
     return produced
 
 
-def _set_unhinted_rendering(ttf_path: Path) -> None:
-    """Ask rasterizers for smart dropout and smoothing, as an unhinted TrueType font should."""
-    font = TTFont(ttf_path)
-    prep = newTable("prep")
-    prep.program = Program()
-    prep.program.fromAssembly(["PUSHW[]", "511", "SCANCTRL[]", "PUSHB[]", "4", "SCANTYPE[]"])
-    font["prep"] = prep
-    gasp = newTable("gasp")
-    gasp.gaspRange = {0xFFFF: 0x000F}
-    font["gasp"] = gasp
-    font["head"].flags |= 1 << 3
-    font.save(ttf_path)
+def _autohint_ttf(ttf_path: Path) -> None:
+    """Hint the TTF with ttfautohint, or leave it unhinted if the tool isn't available."""
+    try:
+        import ttfautohint
+    except ImportError:
+        return
+    hinted = ttf_path.with_suffix(".hinted.ttf")
+    try:
+        ttfautohint.ttfautohint(in_file=str(ttf_path), out_file=str(hinted), no_info=True)
+        font = TTFont(hinted)
+        font["head"].flags |= 1 << 3  # hinted fonts render at whole pixel sizes
+        font.save(hinted)
+        hinted.replace(ttf_path)
+    except Exception:  # noqa: BLE001 - a build still finishes, and the report shows hinting failed
+        hinted.unlink(missing_ok=True)
+
+
+def _autohint_otf(otf_path: Path) -> None:
+    """Hint the OTF with Adobe's autohinter, or leave it unhinted if the tool isn't available."""
+    try:
+        subprocess.run([sys.executable, "-c", OTF_AUTOHINT, str(otf_path)], capture_output=True, timeout=300, check=True)
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def _ttf_to_woff2(ttf_path: Path, woff2_path: Path) -> None:

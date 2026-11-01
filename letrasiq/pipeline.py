@@ -111,6 +111,8 @@ def build_font(
         anchors={name: src.anchors for name, src in sources.items() if src.anchors},
         features=feature_code(names, bool(design.advance), design.shape.get("figures") == "tabular"),
         categories=glyph_categories(names, marks),
+        design_overshoot=design.os,
+        stems=(design.V, design.H),
     )
 
     build_dir = d / "build"

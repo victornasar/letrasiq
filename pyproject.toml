@@ -22,7 +22,8 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "fontbakery[googlefonts]>=1.1"]
+hinting = ["ttfautohint-py>=0.6", "afdko>=4.0"]
+dev = ["pytest>=8.0", "fontbakery[googlefonts]>=1.1", "ttfautohint-py>=0.6", "afdko>=4.0"]
 
 [project.scripts]
 letrasiq = "letrasiq.cli:app"

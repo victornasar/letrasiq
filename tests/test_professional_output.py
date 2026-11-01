@@ -68,10 +68,29 @@ def test_every_format_drops_mac_names_and_keeps_the_license(built):
         assert "Open Font License" in name.getDebugName(13), key
 
 
-def test_ttf_requests_smart_dropout(built):
-    font = TTFont(built["ttf"])
-    assert any(line.startswith("SCANCTRL") for line in font["prep"].program.getAssembly())
-    assert font["gasp"].gaspRange == {0xFFFF: 0x000F}
+def test_both_formats_are_autohinted(built):
+    pytest.importorskip("ttfautohint")
+    pytest.importorskip("afdko")
+    ttf = TTFont(built["ttf"])
+    assert "fpgm" in ttf and "prep" in ttf
+    assert len(ttf["glyf"]["n"].program.getBytecode()) > 0
+    otf = TTFont(built["otf"])
+    charstring = otf["CFF "].cff.topDictIndex[0].CharStrings["n"]
+    charstring.decompile()
+    assert any(op in charstring.program for op in ("hstem", "vstem", "hstemhm", "vstemhm", "hintmask"))
+
+
+def test_a_missing_autohinter_leaves_a_working_unhinted_font(tmp_path):
+    from unittest.mock import patch
+
+    root = tmp_path / "fonts"
+    root.mkdir()
+    shutil.copytree(REPO / "fonts" / "letra-code", root / "letra-code", ignore=shutil.ignore_patterns("build", "glyphs", "__pycache__"))
+    with patch("letrasiq.compile._autohint_ttf"), patch("letrasiq.compile._autohint_otf"):
+        outputs = build_font("letra-code", root=root, skip_preview=True)
+    font = TTFont(outputs["ttf"])
+    assert "fpgm" not in font
+    assert 0x41 in font.getBestCmap()
 
 
 @pytest.fixture(scope="module", params=["letra-humanist", "letra-transitional", "letra-geo", "letra-slab", "letra-code"])
