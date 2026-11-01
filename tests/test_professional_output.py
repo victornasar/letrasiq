@@ -256,6 +256,15 @@ def test_ligatures_and_figure_styles_when_shaped(each_font):
     assert [g for g, _, _ in _shape(path, "0123456789", {"tnum": True, "pnum": True})] != []
 
 
+def test_fi_ligature_keeps_the_dot_on_its_i(each_font):
+    name, outputs = each_font
+    if name == "letra-code":
+        return
+    font = TTFont(outputs["ttf"])
+    glyf = font["glyf"]
+    assert glyf["fi"].numberOfContours >= glyf["f"].numberOfContours + 2  # stem and dot, not one merged stem
+
+
 def test_case_forms_and_kerning_when_shaped(each_font):
     name, outputs = each_font
     path = outputs["ttf"]

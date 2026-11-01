@@ -59,6 +59,20 @@ def cmd_build(
         typer.echo((outputs["report"].parent / "report-summary.txt").read_text(encoding="utf-8").strip())
 
 
+@app.command("release")
+def cmd_release(
+    name: str = typer.Argument(..., help="Font name"),
+    fonts: Optional[Path] = typer.Option(None, "--fonts", help="Fonts root directory"),
+) -> None:
+    """Build the font, then package it and prepare its review packet."""
+    from letrasiq.release import build_release
+
+    outputs = build_release(name, root=fonts or fonts_root())
+    for key, path in outputs.items():
+        typer.echo(f"{key}: {path}")
+    typer.echo((outputs["report"].parent / "report-summary.txt").read_text(encoding="utf-8").strip())
+
+
 @app.command("preview")
 def cmd_preview(
     name: str = typer.Argument(..., help="Font name"),

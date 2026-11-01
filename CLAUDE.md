@@ -72,7 +72,10 @@ Commit and push when the human asks. Add a line to the font's `CHANGELOG.md` exp
 - Tell a glyph's story from `git log -p -- fonts/<name>/draw.py`, summarized in plain language.
 - `compare` can only rebuild refs that have a `design.json`.
 
-## Report and review
+## Release and review
+
+`letrasiq release <name>` assembles `build/release/` from one exact build: desktop and web fonts, specimen, documentation and a zipped review packet. Keep the font's `review-notes.md` honest, because the reviewer reads it.
+
 
 `letrasiq build` writes `build/previews/report.html`, showing each production stage as passed, failed or needing a person. Never call a font professional or reviewed on your own judgment. Only a committed `review.json` from a real type designer can mark a font reviewed: it needs `reviewer`, `date`, `version`, `fingerprint` (shown in the report) and `outcome` (`approved`, or the changes they asked for). Never write this file on someone's behalf.
 

@@ -92,7 +92,7 @@ def sign_off(font_dir: Path, version: str, current: str) -> Stage:
     return Stage(name, PASSED, f"Approved by {who} on {date}.")
 
 
-def font_bakery(profile: str, font: Path) -> Stage:
+def font_bakery(profile: str, font: Path, pre_release: bool = False) -> Stage:
     name = f"Font Bakery {profile} checks ({font.suffix[1:].upper()})"
     with tempfile.TemporaryDirectory(prefix="letrasiq-report-") as tmp:
         out = Path(tmp) / "report.json"
@@ -115,6 +115,8 @@ def font_bakery(profile: str, font: Path) -> Stage:
                     failed.append(key)
     result = data["result"]
     counts = f"{result.get('PASS', 0)} passed, {len(failed)} failed, {result.get('SKIP', 0)} skipped"
+    if failed == ["googlefonts/name/version_format"] and pre_release:
+        return Stage(name, PERSON, f"{counts}: only the version number, which must be 1.000 or higher for release. A person decides when it's ready.")
     if failed:
         return Stage(name, FAILED, f"{counts}: {', '.join(sorted(failed))}")
     return Stage(name, PASSED, counts)
@@ -139,10 +141,6 @@ def _otf_is_hinted(font: TTFont) -> bool:
 
 def _stage(name: str, ok: bool, good: str, bad: str) -> Stage:
     return Stage(name, PASSED if ok else FAILED, good if ok else bad)
-
-
-def _not_built(name: str, step: str) -> Stage:
-    return Stage(name, FAILED, f"Not built yet. Planned in step {step}.")
 
 
 def build_report(font_dir: Path, spec: FontSpec | None = None, run_font_bakery: bool = True) -> Report:
@@ -212,7 +210,7 @@ def build_report(font_dir: Path, spec: FontSpec | None = None, run_font_bakery: 
     os2 = ttf["OS/2"]
     head = ttf["head"]
     if run_font_bakery:
-        bakery = [font_bakery("universal", ttf_path), font_bakery("universal", otf_path), font_bakery("googlefonts", ttf_path)]
+        bakery = [font_bakery("universal", ttf_path), font_bakery("universal", otf_path), font_bakery("googlefonts", ttf_path, pre_release=spec.version.split(".")[0] == "0")]
     else:
         bakery = [Stage("Font Bakery checks", FAILED, "Skipped in this run.")]
     engineering = [
@@ -234,10 +232,22 @@ def build_report(font_dir: Path, spec: FontSpec | None = None, run_font_bakery: 
     ]
 
     review = sign_off(font_dir, spec.version, current)
+    release_dir = build / "release"
+    family_dir = spec.family_name().replace(" ", "")
+    package, packet = release_dir / family_dir, release_dir / f"{family_dir}-review-packet"
+    try:
+        manifest = json.loads((release_dir / "manifest.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        manifest = {}
+    fresh = manifest.get("fingerprint") == current
+    run_it = "Run `letrasiq release`." if not manifest else "The font changed after the last release. Run `letrasiq release` again."
     release = [
-        _not_built("Release package", "8"),
-        _not_built("Specimen and documentation", "8"),
-        _not_built("Review packet", "8"),
+        _stage("Release package", fresh and any((package / "Desktop").glob("*.otf")) and any((package / "Web").glob("*.woff2")),
+               "Desktop and web fonts match this exact build.", run_it),
+        _stage("Specimen and documentation", fresh and (package / "Documentation" / "Specimen.html").exists() and (package / "Documentation" / "README.txt").exists(),
+               "Specimen, README, license and changelog are included.", run_it),
+        _stage("Review packet", fresh and (packet / "README.md").exists(),
+               f"{packet.name}.zip is ready for a type designer.", run_it),
         review,
     ]
 

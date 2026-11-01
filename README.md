@@ -50,6 +50,7 @@ fonts/<name>/
 |---------|---------|
 | `letrasiq new <name> [--spec spec.json]` | Create a font folder that builds completely from its design sheet |
 | `letrasiq build <name>` | Draw, kern and compile, then generate previews and the tester |
+| `letrasiq release <name>` | Build, then assemble the release package, specimen and review packet in `build/release/` |
 | `letrasiq check <name>` | Validate coverage, outlines and consistency |
 | `letrasiq preview <name>` | Re-render the specimen PNG |
 | `letrasiq compare <name> --ref HEAD` | Before/after PNG against a git ref |

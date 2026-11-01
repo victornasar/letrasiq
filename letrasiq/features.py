@@ -35,7 +35,7 @@ def add_feature_glyphs(f: Drawing, d: Design) -> None:
             f.glyphs[f"{name}.tf"] = Placed(tabular.path, tabular.width)
             f.add(name, [tabular.path], "optical", top=d.fig)
 
-    for ligature, second in (("fi", "dotlessi"), ("fl", "l")):
+    for ligature, second in (("fi", "i"), ("fl", "l")):
         first_glyph, second_glyph = f.glyphs["f"], f.glyphs[second]
         moved = second_glyph.path.transform(1, 0, 0, 1, first_glyph.width, 0)
         f.glyphs[ligature] = Placed(tidy(union(first_glyph.path, moved)), first_glyph.width + second_glyph.width)
