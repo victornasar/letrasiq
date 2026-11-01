@@ -1,0 +1,29 @@
+{
+  "brief": "A sturdy slab serif for headlines, signage and short text: direct and confident, with heavy square serifs and an engineered feel.",
+  "style": {"serifs": "slab", "terminals": "cut"},
+  "shape": {"proportions": "even", "aperture": "closed", "dots": "square", "l": "plain"},
+  "values": {
+    "stem": 104,
+    "thin": 76,
+    "cap_stem": 112,
+    "cap_thin": 82,
+    "stress_deg": 0,
+    "overshoot": 12,
+    "figure_height": 690,
+    "join": 0.6,
+    "tension": 1.0,
+    "space": 250,
+    "kern_gap": 90,
+    "serif_thickness": 72,
+    "serif_length": 64,
+    "optical_floor": 18
+  },
+  "spacing": {"S": 72, "R": 40, "O": 28, "D": 8, "T": 12},
+  "why": {
+    "serifs": "Slab serifs nearly as thick as the thin strokes give the sturdy, structural look the brief asks for.",
+    "thin": "76 against a stem of 104 is low contrast, so nothing looks delicate.",
+    "aperture": "Closed apertures and square dots add the engineered feel.",
+    "proportions": "Even widths keep headlines steady and blocky."
+  },
+  "samples": {}
+}

@@ -21,6 +21,7 @@ class Kit:
         self.d = d
         self.serif = d.serifs != "none"
         self.ball_terminals = d.terminals == "ball"
+        self.slab_serifs = d.serifs == "slab"
 
     def lstem(self, x: float, top: float, bottom: float = 0.0, top_serif: bool = True, foot_serif: bool = True) -> list[pathops.Path]:
         """Lowercase stem: a pen-cut top on sans, a head and foot on serif."""
@@ -54,6 +55,8 @@ class Kit:
             return []
         t = self.d.serif_t
         y1 = y + t if y < self.d.xh * 0.5 else y - t
+        if self.slab_serifs:
+            overhang = max(overhang, self.d.serif_len * 0.75)
         return [rect(x0 - overhang, min(y, y1), x1 + overhang, max(y, y1))]
 
     def beak(self, x: float, y: float, h: float, length: float = 74.0, flip_x: bool = False, flip_y: bool = False) -> list[pathops.Path]:
@@ -61,6 +64,10 @@ class Kit:
         if not self.serif:
             return []
         t = self.d.CH
+        if self.slab_serifs:
+            # A square block on the arm's end, with no bracket.
+            block = rect(-self.d.CV * 0.55, -h * 0.72, 0, 0)
+            return [block.transform(-1 if flip_x else 1, 0, 0, -1 if flip_y else 1, x, y)]
         p = shape((0, 0), ("l", (0, -h)), ("l", (-13, -h)), ("c", (-20, -h * 0.45), (-length * 0.45, -t - 3), (-length, -t)), ("l", (-length, 0)))
         sx, sy = (-1 if flip_x else 1), (-1 if flip_y else 1)
         return [p.transform(sx, 0, 0, sy, x, y)]
@@ -69,6 +76,10 @@ class Kit:
         """Upright wedge at a curve's open end (C, G, S, s). x is its outer edge."""
         if not self.serif:
             return []
+        if self.slab_serifs:
+            block = self.d.V * 0.6
+            lo, hi = sorted((y0, y1))
+            return [rect(x, lo, x + block, hi)] if left else [rect(x - block, lo, x, hi)]
         if left:
             return [poly((x + width, y0), (x, y0), (x - 3, y1), (x + 10, y1))]
         return [poly((x - width, y0), (x, y0), (x + 3, y1), (x - 10, y1))]
@@ -136,7 +147,8 @@ def construct(d: Design) -> Drawing:
     square_dots = d.shape.get("dots", "round") == "square"
 
     def round_dot(x: float, y: float, r: float) -> pathops.Path:
-        return rect(x - r, y - r, x + r, y + r) if square_dots else oval(x, y, r, r)
+        # Squares look bigger than circles of the same width.
+        return rect(x - r * 0.84, y - r * 0.84, x + r * 0.84, y + r * 0.84) if square_dots else oval(x, y, r, r)
 
     S = k.serif
     V, H, CV, CH = d.V, d.H, d.CV, d.CH
@@ -250,7 +262,7 @@ def construct(d: Design) -> Drawing:
     f.add("S", [cs([(440, cap * 0.74, 112, 0.84) if closed else (428, cap * 0.82, 148, 0.8), (236, CT, 180), (52, cap * 0.74, 270),
                     (232, ccy + 6, 335), (418, cap * 0.25, 270), (210, CB, 180),
                     (-4, cap * 0.26, 112, 0.84) if closed else (6, cap * 0.17, 152, 0.8)], v=CV * 0.96),
-                *k.spur(446, cap * 0.7, cap + d.os - 4), *k.spur(-12, cap * 0.3, -d.os + 4, 42, left=True)])
+                *([] if closed else [*k.spur(446, cap * 0.7, cap + d.os - 4), *k.spur(-12, cap * 0.3, -d.os + 4, 42, left=True)])])
     f.add("T", [*k.cstem(228, top_serif=False), rect(0, cap - CH, 228 * 2 + CV, cap),
                 *k.beak(228 * 2 + CV, cap, 170), *k.beak(0, cap, 170, flip_x=True)])
     u_r = 551 if not S else 560
@@ -284,7 +296,8 @@ def construct(d: Design) -> Drawing:
                     stroke(d, [(ax + 10, xh * 0.56, 186, 0.6), (146, xh * 0.5, 188, 0.95), (0, xh * 0.24, 270), (118, B, 0),
                                (ax + 10, xh * 0.17, 62, d.join)]),
                     *k.ball(58, xh * 0.78, 48),
-                    *([poly((ax + V / 2 - 1, 0), (ax + V / 2 + 58, 0), (ax + V / 2 + 58, 14), (ax + V / 2 - 1, 42))] if S else [])])
+                    *([foot(d, ax - V / 2, ax + V / 2, left=False)] if k.slab_serifs else
+                      [poly((ax + V / 2 - 1, 0), (ax + V / 2 + 58, 0), (ax + V / 2 + 58, 14), (ax + V / 2 - 1, 42))] if S else [])])
     f.add("b", [*k.lstem(0, asc, foot_serif=False), bowl_right(412)])
     f.add("c", [stroke(d, [(372, xh * 0.71, 112, 0.84) if closed else (362, xh * 0.81, 140, 0.76), (206, T, 180), (0, cy, 270), (212, B, 0),
                            (378, xh * 0.27, 68, 0.84) if closed else (372, xh * 0.17, 38, 0.74)]),
@@ -347,13 +360,14 @@ def construct(d: Design) -> Drawing:
     f.add("s", [stroke(d, [(332, xh * 0.73, 112, 0.84) if closed else (322, xh * 0.8, 148, 0.75), (178, T, 180), (40, xh * 0.73, 270),
                            (170, mid + 4, 335), (312, xh * 0.25, 270), (150, B, 180),
                            (-8, xh * 0.26, 112, 0.84) if closed else (-2, xh * 0.17, 152, 0.75)], v=V * 0.96),
-                *k.spur(336, xh * 0.72, xh + 4, 40), *k.spur(-16, xh * 0.3, -4, 40, left=True)])
+                *([] if closed else [*k.spur(336, xh * 0.72, xh + 4, 40), *k.spur(-16, xh * 0.3, -4, 40, left=True)])])
     tc = 46 + V / 2
     t_top = xh + 120 if not S else xh + 95
     t_start = t_top if not S else xh - 4
     f.add("t", [stroke(d, [(tc, t_start, 270), (tc, 150 * Y, 270), (tc + 112, B, 0), (tc + 214, xh * 0.1, 28, 0.75)]),
                 rect(0, xh - H, tc + 150, xh),
-                *([poly((46, xh - 2), (46 + V, xh - 2), (46 + V, t_top), (44, xh))] if S else [])])
+                *([rect(46, xh - 2, 46 + V, t_top)] if k.slab_serifs else
+                  [poly((46, xh - 2), (46 + V, xh - 2), (46 + V, t_top), (44, xh))] if S else [])])
     f.add("u", [*k.lstem(nr - V / 2, xh, foot_serif=False),
                 stroke(d, [(V / 2, xh, 270), (V / 2, 190 * Y, 270), (nr * 0.42, B, 0), (nr - V / 2 + 14, 118 * Y, 66, d.join)]),
                 *([foot(d, nr - V / 2, nr + V / 2, left=False), head(d, 0, V, xh)] if S else [])])
@@ -367,7 +381,8 @@ def construct(d: Design) -> Drawing:
                 *k.slab(0, lc_thin(78), 0, 30), *k.slab(322, 322 + lc_thick(98), 0, 30)])
     f.add("y", [diag(182, 0, 0, xh, lc_thick(92), lc_thick(94)), diag(137, desc, 360, xh, lc_thin(72)),
                 *k.slab(0, lc_thick(94), xh, 36), *k.slab(360, 360 + lc_thin(72), xh, 36),
-                *k.ball(112, desc + 34, 40)])
+                *k.ball(112, desc + 34, 40),
+                *([rect(137 - 58, desc, 137 + lc_thin(72) + 58, desc + d.serif_t)] if k.slab_serifs else [])])
     z_t = 104 if not S else V * 1.06
     f.add("z", [rect(14, xh - H, 372, xh), rect(0, 0, 382, H), diag(0, 24 if not S else H, 372 - z_t, xh - 24 if not S else xh - H, z_t),
                 *k.beak(14, xh, 110, 54, flip_x=True), *k.beak(382, 0, 120, 54, flip_y=True)])

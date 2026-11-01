@@ -57,9 +57,21 @@ def test_aperture_and_dots_follow_the_sheet():
     assert list(draw_latin(design(dots="square")).glyphs["period"].path.segments)[1][0] == "lineTo"
 
 
+def _curves(font, name: str) -> int:
+    return [v for v, _ in font.glyphs[name].path.segments].count("curveTo")
+
+
 def test_slab_serifs_add_width_beyond_the_stem():
     d = replace(design(), serifs="slab", H=60, CH=64)
     assert _ratio(draw_latin(d), "I") > _ratio(draw_latin(design()), "I")
+
+
+def test_slab_construction_is_square_where_bracketed_is_curved():
+    slab = draw_latin(replace(design(), serifs="slab", serif_t=60))
+    bracketed = draw_latin(replace(design(), serifs="bracketed"))
+    for name in "IEFHLTl":
+        assert _curves(slab, name) <= 2 < _curves(bracketed, name) or _curves(slab, name) == 0, name
+    assert _curves(slab, "I") == _curves(slab, "E") == 0
 
 
 def test_an_unseen_combination_builds_a_complete_clean_font(tmp_path):

@@ -72,7 +72,7 @@ def test_ttf_requests_smart_dropout(built):
     assert font["gasp"].gaspRange == {0xFFFF: 0x000F}
 
 
-@pytest.fixture(scope="module", params=["letra-humanist", "letra-transitional", "letra-geo", "letra-code"])
+@pytest.fixture(scope="module", params=["letra-humanist", "letra-transitional", "letra-geo", "letra-slab", "letra-code"])
 def each_font(request, tmp_path_factory) -> tuple[str, dict[str, Path]]:
     root = tmp_path_factory.mktemp("fonts")
     shutil.copytree(

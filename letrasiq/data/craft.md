@@ -17,7 +17,7 @@ Use this when a font is described in words. Turn every characteristic into numbe
 | Light / bold | Scale stem and thin together, then reopen counters and thin the joins | light stem 50-70; bold stem 130-170 |
 | Condensed / wide | Change widths and curve shape, not a horizontal stretch, which distorts stems | never scale outlines on one axis |
 
-Serif construction: bracketed for warmth and reading, unbracketed slab for sturdiness, hairline for elegance at large sizes. Monospace: one advance (about 600); widen `i l r j f t` with serifs or tails, and compress `m w M W`.
+Serif construction: bracketed for warmth and reading, slab for sturdiness, hairline for elegance at large sizes. For a true slab, set `serif_thickness` close to `thin` and `serif_length` to at least 60, so the serifs read as structure. Monospace: one advance (about 600); widen `i l r j f t` with serifs or tails, and compress `m w M W`.
 
 ## Style and shape
 
