@@ -57,7 +57,7 @@ fonts/<name>/
 | `letrasiq trace <name> <glyph> <image>` | Potrace a sketch into a locked glyph |
 | `letrasiq import-ufo <name> <path.ufo>` | Import editor glyphs as locked outlines |
 
-`build` writes three previews to `build/previews/`: `tester.html` (type your own text, compare with a system font), `review.png` (shapes and text at several sizes) and `detail.png` (outlines with their points).
+`build` writes four previews to `build/previews/`: `tester.html` (type your own text, compare with a system font), `report.html` (each production stage as passed, failed or needing a person), `review.png` (shapes and text at several sizes) and `detail.png` (outlines with their points).
 
 `fonts/` holds three reference fonts built from sheets: a sans, a serif and a monospace.
 

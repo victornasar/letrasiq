@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "fontbakery>=1.1"]
+dev = ["pytest>=8.0", "fontbakery[googlefonts]>=1.1"]
 
 [project.scripts]
 letrasiq = "letrasiq.cli:app"

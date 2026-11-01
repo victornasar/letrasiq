@@ -55,6 +55,8 @@ def cmd_build(
     outputs = build_font(name, root=fonts or fonts_root(), skip_preview=no_preview)
     for key, path in outputs.items():
         typer.echo(f"{key}: {path}")
+    if "report" in outputs:
+        typer.echo((outputs["report"].parent / "report-summary.txt").read_text(encoding="utf-8").strip())
 
 
 @app.command("preview")

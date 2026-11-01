@@ -122,6 +122,10 @@ def build_font(
         outputs["review"] = render_review(d, spec)
         outputs["detail"] = render_detail(d, spec)
         outputs["tester"] = render_tester(d, spec)
+        # Imported here because the report uses check, which uses this module.
+        from letrasiq.report import render_report
+
+        outputs["report"] = render_report(d, spec)
 
     return outputs
 

@@ -27,7 +27,7 @@ Uppercase glyph files are `A_.json` so they can't collide with `a.json` on case-
 3. **Write the sheet.** Run `letrasiq new <name>`, then fill in `spec.json` metrics and `design.json`, giving a reason under `why` for each characteristic the brief asks for. Done when every requested characteristic maps to a number or a construction choice. Show the human the sheet before drawing.
 4. **Build.** `letrasiq build` constructs every glyph from the sheet through `letrasiq/latin.py`, or `letrasiq/mono.py` when the sheet sets `style.advance`.
 5. **Judge control glyphs, then the rest.** Get `H O n o a e g` right in `review.png` first, since everything else follows from the same values. Fix problems in the sheet or the engine. In the font's `draw.py`, use `f.add` only for shapes that belong to this font alone.
-6. **Review.** Follow the review order in `craft.md`. Done when `letrasiq check <name>` is clean or you can explain each remaining warning, and you've looked at `detail.png` and `review.png`.
+6. **Review.** Follow the review order in `craft.md`. Done when `letrasiq check <name>` is clean or you can explain each remaining warning, and you've looked at `detail.png`, `review.png` and `report.html`.
 7. **Hand over.** Give the human `build/previews/tester.html` with an honest critique against the brief.
 
 | If they say… | Prefer |
@@ -71,6 +71,10 @@ Commit and push when the human asks. Add a line to the font's `CHANGELOG.md` exp
 - Restore a version with `git checkout <ref> -- fonts/<name>/`, then `build`. Prefer this over resetting.
 - Tell a glyph's story from `git log -p -- fonts/<name>/draw.py`, summarized in plain language.
 - `compare` can only rebuild refs that have a `design.json`.
+
+## Report and review
+
+`letrasiq build` writes `build/previews/report.html`, showing each production stage as passed, failed or needing a person. Never call a font professional or reviewed on your own judgment. Only a committed `review.json` from a real type designer can mark a font reviewed: it needs `reviewer`, `date`, `version`, `fingerprint` (shown in the report) and `outcome` (`approved`, or the changes they asked for). Never write this file on someone's behalf.
 
 ## Rules
 

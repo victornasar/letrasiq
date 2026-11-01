@@ -65,5 +65,5 @@ Stems keep their weight at any width, so change proportions here instead of scal
 1. Run `letrasiq build` and `letrasiq check`. Read each warning and either fix it or say why it doesn't apply.
 2. Open `build/previews/detail.png` for construction: boxy bowls, notches, clusters of points.
 3. Open `build/previews/review.png` for shape and spacing in real text.
-4. Run `python -m fontbakery check-universal` on the built TTF and OTF. A failure usually belongs in the engine, so fix it there.
+4. Read `build/previews/report.html`, which includes Font Bakery's results. A failure usually belongs in the engine, so fix it there.
 5. Hand over `build/previews/tester.html`, which is where the person makes the final call.
