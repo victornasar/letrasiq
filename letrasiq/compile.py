@@ -16,6 +16,10 @@ from letrasiq.outline import path_bounds
 from letrasiq.spec import FontSpec
 
 
+MIN_LINE_SPACING = 1.2
+DEFAULT_REPOSITORY = "https://github.com/victornasar/letrasiq"
+
+
 def ofl_text() -> str:
     return resources.files("letrasiq").joinpath("data/OFL.txt").read_text(encoding="utf-8")
 
@@ -33,6 +37,8 @@ def build_ufo(
     groups: dict[str, list[str]] | None = None,
     fixed_advance: int = 0,
     anchors: dict[str, dict[str, Any]] | None = None,
+    features: str = "",
+    categories: dict[str, str] | None = None,
 ) -> ufoLib2.Font:
     ufo = ufoLib2.Font()
     ufo.info.familyName = spec.family_name()
@@ -43,9 +49,11 @@ def build_ufo(
     ufo.info.capHeight = spec.cap_height
     ufo.info.xHeight = spec.x_height
     ufo.info.versionMajor, ufo.info.versionMinor = _parse_version(spec.version)
+    ufo.info.openTypeNameVersion = f"Version {ufo.info.versionMajor}.{ufo.info.versionMinor:03d}"
+    ufo.info.openTypeOS2Type = []  # installable embedding, with no restrictions
     ufo.info.openTypeNameLicense = "SIL Open Font License 1.1"
     ufo.info.openTypeNameLicenseURL = "https://scripts.sil.org/OFL"
-    ufo.info.copyright = f"Copyright (c) 2026, {spec.family_name()} Authors"
+    ufo.info.copyright = copyright_notice(spec)
     ufo.info.openTypeOS2TypoAscender = spec.ascender
     ufo.info.openTypeOS2TypoDescender = spec.descender
     ufo.info.openTypeOS2TypoLineGap = 0
@@ -55,9 +63,15 @@ def build_ufo(
     ufo.info.openTypeOS2WinAscent = max([spec.ascender, *(math.ceil(b[3]) for b in bounds)])
     ufo.info.openTypeOS2WinDescent = max([abs(spec.descender), *(math.ceil(-b[1]) for b in bounds)])
     ufo.info.openTypeOS2Selection = [7]
-    ufo.info.openTypeHheaAscender = spec.ascender
-    ufo.info.openTypeHheaDescender = spec.descender
+    # Default line spacing of at least 1.2 em, so accented lines don't crowd each other.
+    em_scale = max(1.0, MIN_LINE_SPACING * spec.upm / (spec.ascender + abs(spec.descender)))
+    line_ascender = math.ceil(spec.ascender * em_scale)
+    line_descender = -math.ceil(abs(spec.descender) * em_scale)
+    ufo.info.openTypeHheaAscender = line_ascender
+    ufo.info.openTypeHheaDescender = line_descender
     ufo.info.openTypeHheaLineGap = 0
+    ufo.info.openTypeOS2TypoAscender = line_ascender
+    ufo.info.openTypeOS2TypoDescender = line_descender
 
     from letrasiq.glyph import glyph_unicode
 
@@ -98,16 +112,27 @@ def build_ufo(
         for (a, b), val in kerning.items():
             ufo.kerning[a, b] = val
 
+    if features:
+        ufo.features.text = features
+    if categories:
+        ufo.lib["public.openTypeCategories"] = categories
     # public.default names
     ufo.lib["public.skipExportGlyphs"] = []
     return ufo
 
 
 def _parse_version(version: str) -> tuple[int, int]:
+    """Font versions have one fractional number, so 0.1.2 becomes 0.102."""
     parts = version.split(".")
     major = int(parts[0]) if parts else 0
     minor = int(parts[1]) if len(parts) > 1 else 0
-    return major, minor
+    patch = int(parts[2]) if len(parts) > 2 else 0
+    return major, minor * 100 + patch
+
+
+def copyright_notice(spec: FontSpec) -> str:
+    repository = spec.extras.get("repository", DEFAULT_REPOSITORY)
+    return f"Copyright 2026 The {spec.family_name()} Project Authors ({repository})"
 
 
 def compile_otf_ttf(
@@ -195,14 +220,13 @@ def _ttf_to_woff2(ttf_path: Path, woff2_path: Path) -> None:
     font.save(woff2_path)
 
 
-def set_name_table_license(font_path: Path, family: str) -> None:
+def set_name_table_license(font_path: Path, spec: FontSpec) -> None:
     font = TTFont(font_path)
     name = font["name"]
-    from fontTools.ttLib.tables._n_a_m_e import makeName
 
     # name IDs: 0 copyright, 13 license, 14 license URL
     for nid, string in (
-        (0, f"Copyright (c) 2026, {family} Authors"),
+        (0, copyright_notice(spec)),
         (13, "SIL Open Font License 1.1"),
         (14, "https://scripts.sil.org/OFL"),
     ):

@@ -107,6 +107,9 @@ class GlyphSource:
 def glyph_char(name: str) -> str | None:
     if len(name) == 1:
         return name
+    # Alternates like zero.tf are reached through features, not typed directly.
+    if "." in name:
+        return None
     if name == "space":
         return " "
     if name in ASCII_SYMBOLS:

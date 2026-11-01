@@ -10,6 +10,7 @@ import pathops
 
 from letrasiq.compile import build_ufo, compile_otf_ttf, ensure_ofl, set_name_table_license
 from letrasiq.drawing import load_design, regenerate_drawn
+from letrasiq.features import feature_code, glyph_categories
 from letrasiq.glyph import GlyphSource, glyph_name_from_path, load_locked
 from letrasiq.kerning import build_class_kerning
 from letrasiq.outline import cleanup_path, path_bounds, svg_path_to_pathops
@@ -103,9 +104,13 @@ def build_font(
     design = load_design(d, spec)
     # Kerning would break a monospace font's single advance.
     groups, kern = ({}, {}) if design.advance else build_class_kerning(placed, target_gap=design.kern_gap)
+    names = set(placed)
+    marks = {n for n, s in sources.items() if any(a.startswith("_") for a in s.anchors)}
     ufo = build_ufo(
         spec, placed, kerning=kern, groups=groups, fixed_advance=design.advance,
         anchors={name: src.anchors for name, src in sources.items() if src.anchors},
+        features=feature_code(names, bool(design.advance), design.shape.get("figures") == "tabular"),
+        categories=glyph_categories(names, marks),
     )
 
     build_dir = d / "build"
@@ -118,7 +123,7 @@ def build_font(
     outputs = compile_otf_ttf(ufo, build_dir, spec.family_name(), spec.style_name)
     for key in ("otf", "ttf", "woff2"):
         if key in outputs and outputs[key].exists():
-            set_name_table_license(outputs[key], spec.family_name())
+            set_name_table_license(outputs[key], spec)
 
     if not skip_preview:
         outputs["preview"] = render_specimen(d, spec)

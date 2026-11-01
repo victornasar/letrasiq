@@ -34,6 +34,7 @@ These sheet settings choose letter construction, so most briefs need no drawing.
 | `shape.aperture` | `open`, `closed` | Open for warmth and small sizes, closed for neutral or engineered faces |
 | `shape.l` | `plain`, or leave out for a tailed `l` | Plain for geometric faces, but check `l I 1` stay clear |
 | `shape.dots` | `round`, `square` | Square for neutral or engineered faces |
+| `shape.figures` | `tabular`, or leave out for proportional | Tabular default for faces mainly used in tables or interfaces; the other style stays available through `tnum` or `pnum` |
 
 Stems keep their weight at any width, so change proportions here instead of scaling outlines.
 

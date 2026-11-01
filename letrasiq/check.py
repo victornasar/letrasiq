@@ -136,12 +136,6 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
             for code, gname in ((ord("A"), "A"), (ord("a"), "a"), (ord("0"), "zero")):
                 if cmap.get(code) != gname:
                     result.errors.append(f"cmap U+{code:04X} expected {gname}, got {cmap.get(code)}")
-            # Metrics consistency vs spec
-            if "hhea" in ft:
-                if abs(ft["hhea"].ascent - spec.ascender) > 2:
-                    result.warnings.append(
-                        f"hhea.ascent {ft['hhea'].ascent} != spec.ascender {spec.ascender}"
-                    )
         except Exception as e:
             result.errors.append(f"failed to open compiled font: {e}")
 

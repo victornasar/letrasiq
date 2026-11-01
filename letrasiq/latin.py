@@ -12,6 +12,7 @@ from dataclasses import replace
 import pathops
 
 from letrasiq.drawing import Design, Drawing, diag, foot, head, oval, poly, rect, shape, stroke
+from letrasiq.features import add_feature_glyphs
 from letrasiq.latin_core import add_latin_core, glyph_name
 
 
@@ -128,6 +129,7 @@ def draw_latin(d: Design) -> Drawing:
     """The whole Latin Core set at the sheet's proportions."""
     f = draw_base(d)
     add_latin_core(f, d)
+    add_feature_glyphs(f, d)
     return f
 
 

@@ -7,6 +7,7 @@ from dataclasses import replace
 import pathops
 
 from letrasiq.drawing import Design, Drawing, Placed, oval, rect, stroke, tidy, union
+from letrasiq.features import add_feature_glyphs
 from letrasiq.latin import draw_base
 from letrasiq.latin_core import add_latin_core, glyph_name
 
@@ -98,4 +99,5 @@ def draw_mono(d: Design) -> Drawing:
     _slab_letters(d, f, advance)
     _clear_figures(d, f, advance)
     add_latin_core(f, d)
+    add_feature_glyphs(f, d)
     return f

@@ -42,13 +42,14 @@ def test_windows_metrics_cover_every_glyph_without_changing_line_spacing(built):
     assert os2.usWinAscent >= max(b[3] for b in bounds)
     assert os2.usWinDescent >= max(-b[1] for b in bounds)
     assert os2.fsSelection & (1 << 7)
-    assert font["hhea"].ascent == os2.sTypoAscender == 760
+    assert font["hhea"].ascent == os2.sTypoAscender
+    assert font["hhea"].ascent + abs(font["hhea"].descent) >= 1.2 * font["head"].unitsPerEm
 
 
-def test_figures_are_equal_width_and_not_kerned_together(built):
+def test_figures_are_proportional_by_default_with_equal_width_tabular_forms(built):
     font = TTFont(built["ttf"])
-    widths = {font["hmtx"][name][0] for name in FIGURES}
-    assert len(widths) == 1
+    assert len({font["hmtx"][name][0] for name in FIGURES}) > 1
+    assert len({font["hmtx"][f"{name}.tf"][0] for name in FIGURES}) == 1
     import ufoLib2
 
     kerning = ufoLib2.Font.open(built["ufo"]).kerning
@@ -192,3 +193,60 @@ def test_font_bakery_universal_profile_has_no_failures(each_font, key, tmp_path)
     if key == "otf" and name == "letra-code":
         failed = [c for c in failed if "opentype/monospace" not in c]
     assert not failed
+
+
+def _shape(font_path: Path, text: str, features: dict | None = None) -> list[tuple[str, int, int]]:
+    """Run real text shaping: (glyph, x offset, advance) for each output glyph."""
+    hb = pytest.importorskip("uharfbuzz")
+    blob = hb.Blob.from_file_path(str(font_path))
+    font = hb.Font(hb.Face(blob))
+    buf = hb.Buffer()
+    buf.add_str(text)
+    buf.guess_segment_properties()
+    hb.shape(font, buf, features or {})
+    return [
+        (font.glyph_to_string(info.codepoint), pos.x_offset, pos.x_advance)
+        for info, pos in zip(buf.glyph_infos, buf.glyph_positions)
+    ]
+
+
+def test_marks_attach_and_i_loses_its_dot_when_shaped(each_font):
+    _, outputs = each_font
+    for path in (outputs["ttf"], outputs["otf"]):
+        # j + acute has no ready-made character, so this exercises ccmp and mark together.
+        shaped = _shape(path, "j\u0301")
+        assert shaped[0][0] == "uni0237"
+        assert shaped[1][0] == "acutecomb" and shaped[1][2] == 0
+        # The mark moves to sit over the letter, whatever its own position.
+        assert _shape(path, "J\u0301")[1][1] != 0
+
+
+def test_ligatures_and_figure_styles_when_shaped(each_font):
+    name, outputs = each_font
+    path = outputs["ttf"]
+    if name == "letra-code":
+        assert [g for g, _, _ in _shape(path, "fi")] == ["f", "i"]
+        assert len({a for _, _, a in _shape(path, "0123456789")}) == 1
+        return
+    assert [g for g, _, _ in _shape(path, "fi")] == ["fi"]
+    assert [g for g, _, _ in _shape(path, "fl")] == ["fl"]
+    proportional = _shape(path, "0123456789")
+    tabular = _shape(path, "0123456789", {"tnum": True})
+    assert len({a for _, _, a in proportional}) > 1
+    assert len({a for _, _, a in tabular}) == 1
+    assert [g for g, _, _ in _shape(path, "0123456789", {"tnum": True, "pnum": True})] != []
+
+
+def test_case_forms_and_kerning_when_shaped(each_font):
+    name, outputs = each_font
+    path = outputs["ttf"]
+    assert _shape(path, "(", {"case": True})[0][0] == "parenleft.case"
+    if name != "letra-code":
+        pair = _shape(path, "AV")
+        default_a = _shape(path, "A")[0][2]
+        assert pair[0][2] < default_a
+
+
+def test_kerning_stays_off_with_the_kern_feature_disabled(built):
+    pair = _shape(built["ttf"], "AV", {"kern": False})
+    assert pair[0][2] == _shape(built["ttf"], "A")[0][2]

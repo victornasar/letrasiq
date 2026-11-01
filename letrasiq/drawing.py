@@ -570,15 +570,18 @@ class Drawing:
         parts: list[pathops.Path],
         sb: tuple[float | str, float | str] | str | None = None,
         advance: int | None = None,
+        top: float | None = None,
     ) -> None:
         """Add a glyph. Letters, or ``sb="optical"``, space optically unless ``sb`` overrides.
 
-        ``advance`` fixes the width and centres the outline in it.
+        ``advance`` fixes the width and centres the outline in it. ``top`` sets the height of
+        the zone that optical spacing measures, where it isn't the x-height or cap height.
         """
         path = union(*parts)
         x0, _, x1, _ = path.bounds
         if (sb == "optical" or (sb is None and len(name) == 1 and name.isalpha())) and advance is None:
-            top = self.d.cap if name.isupper() else self.d.xh
+            if top is None:
+                top = self.d.cap if name[0].isupper() else self.d.xh
             left, left_edge = self._optical_side(path, top, min)
             right, right_edge = self._optical_side(path, top, max)
             dx = left - left_edge
