@@ -135,6 +135,8 @@ REVIEW_LINES = [
     ("!\"#$%&'()*+,-./:;<=>?", 80),
     ("@[\\]^_`{|}~", 80),
     ("minimum illicit Tower AVATAR Typography Wave", 62),
+    ("To Ta Te Tu Ty Tö Tä Té Ty. Yo Yá Ya. Vo Vä Va, We Wo Wä Fa Fo Fä Pa Pä P. LT LV LY", 44),
+    ("AV VA AW WA AT TA AY YA KO LO RO RT RV ry. ky. r, r. f. y, v. w. \"A A\" 'A' (A) T. T, P, F.", 40),
     ("ÀÉÎÕÜ Çàéîõü ñçšžł ÅÆØ åæø Œœ ß Þþ Ðð Ħħ", 70),
     ("Ångström Çelik Żółć žluťoučký Őrült Ñandú Ģirts", 58),
     ("“Quotes” ‘single’ «guillemets» „low“ – en — em … € £ ¥ ¢ © ® ™ § ¶ ° × ÷ − • ¡Sí! ¿Qué?", 44),

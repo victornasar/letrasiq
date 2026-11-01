@@ -11,7 +11,7 @@ import pathops
 from letrasiq.compile import build_ufo, compile_otf_ttf, ensure_ofl, set_name_table_license
 from letrasiq.drawing import load_design, regenerate_drawn
 from letrasiq.glyph import GlyphSource, glyph_name_from_path, load_locked
-from letrasiq.kerning import build_kerning
+from letrasiq.kerning import build_class_kerning
 from letrasiq.outline import cleanup_path, path_bounds, svg_path_to_pathops
 from letrasiq.preview import render_detail, render_detail_core, render_review, render_specimen
 from letrasiq.spec import FontSpec
@@ -102,9 +102,9 @@ def build_font(
 
     design = load_design(d, spec)
     # Kerning would break a monospace font's single advance.
-    kern = {} if design.advance else build_kerning(placed, target_gap=design.kern_gap, damping=0.75, clamp=(-90.0, 0.0))
+    groups, kern = ({}, {}) if design.advance else build_class_kerning(placed, target_gap=design.kern_gap)
     ufo = build_ufo(
-        spec, placed, kerning=kern, fixed_advance=design.advance,
+        spec, placed, kerning=kern, groups=groups, fixed_advance=design.advance,
         anchors={name: src.anchors for name, src in sources.items() if src.anchors},
     )
 

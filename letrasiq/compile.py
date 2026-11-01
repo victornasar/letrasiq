@@ -30,6 +30,7 @@ def build_ufo(
     spec: FontSpec,
     glyphs: dict[str, tuple[pathops.Path, int]],
     kerning: dict[tuple[str, str], int] | None = None,
+    groups: dict[str, list[str]] | None = None,
     fixed_advance: int = 0,
     anchors: dict[str, dict[str, Any]] | None = None,
 ) -> ufoLib2.Font:
@@ -91,6 +92,8 @@ def build_ufo(
             pen.lineTo(point)
         pen.closePath()
 
+    for group, members in (groups or {}).items():
+        ufo.groups[group] = members
     if kerning:
         for (a, b), val in kerning.items():
             ufo.kerning[a, b] = val

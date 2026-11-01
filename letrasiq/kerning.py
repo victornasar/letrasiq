@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import unicodedata
 from functools import lru_cache
 from importlib import resources
 from pathlib import Path
@@ -9,7 +10,7 @@ from pathlib import Path
 import pathops
 
 from letrasiq.outline import path_bounds, to_cubic_path
-from letrasiq.glyph import DIGIT_NAMES
+from letrasiq.glyph import DIGIT_NAMES, glyph_char
 
 
 def _resolve_name(token: str) -> str:
@@ -144,3 +145,149 @@ def build_kerning(
         if val:
             kern[(left, right)] = val
     return kern
+
+
+# Base letters whose sides behave alike. Accented letters join their base letter's class.
+FIRST_SIDE_CLASSES = {  # the glyph's right side, when it comes first in a pair
+    "A": "A", "B": "B", "C": "CG", "D": "DOQ", "E": "E", "F": "F", "J": "JU", "K": "KX", "L": "L", "P": "P",
+    "R": "R", "S": "S", "T": "T", "V": "VW", "Y": "Y", "Z": "Z",
+    "a": "a", "b": "bop", "c": "c", "e": "e", "f": "f", "g": "g", "h": "hmn", "k": "kx", "r": "r", "s": "s",
+    "t": "t", "v": "vwy", "z": "z",
+}
+SECOND_SIDE_CLASSES = {  # the glyph's left side, when it comes second in a pair
+    "A": "A", "C": "CGOQ", "J": "J", "S": "S", "T": "T", "U": "U", "V": "VW", "X": "X", "Y": "Y", "Z": "Z",
+    "a": "a", "c": "cdegoq", "f": "f", "j": "j", "n": "mnpr", "s": "s", "t": "t", "u": "u", "v": "vwy", "x": "x", "z": "z",
+}
+# Glyphs with no decomposition that still belong with a letter on one side.
+FIRST_SIDE_ALIASES = {"AE": "E", "OE": "E", "ae": "e", "oe": "e", "Oslash": "D", "oslash": "b", "Thorn": "P", "thorn": "b", "Dcroat": "D", "Eth": "D", "dcroat": "h", "Lslash": "L"}
+SECOND_SIDE_ALIASES = {"AE": "A", "OE": "C", "ae": "a", "oe": "c", "Oslash": "C", "oslash": "c", "eth": "c", "dcroat": "c"}
+PUNCTUATION_CLASSES = {
+    "period": ["period", "comma", "ellipsis", "quotesinglbase", "quotedblbase"],
+    "quote": ["quotesingle", "quotedbl", "quoteright", "quotedblright", "quoteleft", "quotedblleft"],
+}
+EXCEPTION_MARGIN = 6
+MAX_SYMBOL_KERN = -35
+
+
+def _base_letter(name: str) -> str | None:
+    """The plain letter a glyph is built on, for accented letters."""
+    char = glyph_char(name)
+    if not char or len(char) != 1:
+        return None
+    if len(name) == 1 and name.isalpha():
+        return name
+    parts = unicodedata.decomposition(char).split()
+    if len(parts) == 2 and not parts[0].startswith("<"):
+        base = chr(int(parts[0], 16))
+        return base if base.isalpha() else None
+    return None
+
+
+def _classes(names: list[str], table: dict[str, str], aliases: dict[str, str]) -> dict[str, list[str]]:
+    by_letter = {letter: key for key, letters in table.items() for letter in letters}
+    classes: dict[str, list[str]] = {}
+    for name in names:
+        letter = aliases.get(name) or _base_letter(name)
+        key = by_letter.get(letter or "")
+        if key:
+            classes.setdefault(key, []).append(name)
+    for key, members in PUNCTUATION_CLASSES.items():
+        present = [m for m in members if m in names]
+        if present:
+            classes[key] = present
+    return classes
+
+
+class _Profiles:
+    """Each glyph's left and right edges on one shared height grid, so pairs compare quickly."""
+
+    STEP = 20
+
+    def __init__(self, placed: dict[str, tuple[pathops.Path, int]]) -> None:
+        self.placed = placed
+        low = min((p.bounds[1] for p, _ in placed.values() if p), default=0.0)
+        high = max((p.bounds[3] for p, _ in placed.values() if p), default=1000.0)
+        self.low, self.steps = low, max(1, int((high - low) / self.STEP))
+        self.high = low + self.steps * self.STEP
+        self.right: dict[str, list[float | None]] = {}
+        self.left: dict[str, list[float | None]] = {}
+
+    def _edges(self, name: str, store: dict, pick) -> list[float | None]:
+        if name not in store:
+            store[name] = _edge(self.placed[name][0], self.low, self.high, pick, self.steps)
+        return store[name]
+
+    def gap(self, first: str, second: str) -> float | None:
+        """Closest approach of two glyphs set side by side, wherever they share a height."""
+        width = self.placed[first][1]
+        gaps = [
+            width + b - a
+            for a, b in zip(self._edges(first, self.right, max), self._edges(second, self.left, min))
+            if a is not None and b is not None
+        ]
+        return min(gaps) if gaps else None
+
+
+def build_class_kerning(
+    placed: dict[str, tuple[pathops.Path, int]],
+    target_gap: float,
+    damping: float = 0.75,
+    clamp: tuple[float, float] = (-90.0, 0.0),
+    minimum_gap: float = 24.0,
+) -> tuple[dict[str, list[str]], dict[tuple[str, str], int]]:
+    """Kerning groups and rules, with exceptions where an accent would collide.
+
+    A rule comes from the plain letters in each class and takes the gentlest value any of
+    them needs. Accented members then keep the rule unless it would crowd them.
+    """
+    drawn = {n: v for n, v in placed.items() if v[0]}
+    names = list(drawn)
+    firsts = _classes(names, FIRST_SIDE_CLASSES, FIRST_SIDE_ALIASES)
+    seconds = _classes(names, SECOND_SIDE_CLASSES, SECOND_SIDE_ALIASES)
+    first_of = {m: k for k, ms in firsts.items() for m in ms}
+    second_of = {m: k for k, ms in seconds.items() for m in ms}
+    profiles = _Profiles(drawn)
+
+    def plain(members: list[str]) -> list[str]:
+        return [m for m in members if len(m) == 1] or members
+
+    def wanted(a: str, b: str) -> int | None:
+        gap = profiles.gap(a, b)
+        if gap is None:
+            return None
+        return int(round(max(clamp[0], min(clamp[1], (target_gap - gap) * damping))))
+
+    class_pairs: set[tuple[str, str]] = set()
+    single_pairs: set[tuple[str, str]] = set()
+    figures = set(DIGIT_NAMES.values())
+    for left, right in load_kern_pairs():
+        if left not in drawn or right not in drawn or (left in figures and right in figures):
+            continue
+        if left in first_of and right in second_of:
+            class_pairs.add((first_of[left], second_of[right]))
+        else:
+            single_pairs.add((left, right))
+
+    groups: dict[str, list[str]] = {}
+    kerning: dict[tuple[str, str], int] = {}
+    for first_key, second_key in sorted(class_pairs):
+        values = [v for a in plain(firsts[first_key]) for b in plain(seconds[second_key]) if (v := wanted(a, b)) is not None]
+        rule = max(values, default=0)
+        if rule >= -4:
+            continue
+        group1, group2 = f"public.kern1.{first_key}", f"public.kern2.{second_key}"
+        groups[group1], groups[group2] = firsts[first_key], seconds[second_key]
+        kerning[(group1, group2)] = rule
+        for a in firsts[first_key]:
+            for b in seconds[second_key]:
+                gap = profiles.gap(a, b)
+                if gap is not None and gap + rule < minimum_gap:
+                    # The rule would crowd this pair, so give back only what it needs.
+                    kerning[(a, b)] = int(min(0, minimum_gap + EXCEPTION_MARGIN - gap))
+    for left, right in sorted(single_pairs):
+        value = wanted(left, right)
+        if value is not None and value < -4:
+            # Punctuation keeps some air: a fully closed "A?" reads as a mistake.
+            limit = 0 if left in names and right in names and len(left) == 1 and len(right) == 1 else MAX_SYMBOL_KERN
+            kerning[(left, right)] = max(value, limit) if limit else value
+    return groups, kerning

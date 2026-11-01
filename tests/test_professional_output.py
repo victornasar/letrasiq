@@ -84,6 +84,47 @@ def each_font(request, tmp_path_factory) -> tuple[str, dict[str, Path]]:
     return request.param, build_font(request.param, root=root, skip_preview=True)
 
 
+def _kern(ufo, a: str, b: str) -> int:
+    """The value a text engine applies: an exception first, then the class rule."""
+    if (a, b) in ufo.kerning:
+        return ufo.kerning[(a, b)]
+    group1 = next((g for g, ms in ufo.groups.items() if g.startswith("public.kern1.") and a in ms), None)
+    group2 = next((g for g, ms in ufo.groups.items() if g.startswith("public.kern2.") and b in ms), None)
+    return ufo.kerning.get((group1, group2), 0)
+
+
+def test_accented_letters_inherit_kerning_from_their_base(each_font):
+    import ufoLib2
+
+    name, outputs = each_font
+    ufo = ufoLib2.Font.open(outputs["ufo"])
+    if name == "letra-code":
+        assert not ufo.groups and not ufo.kerning
+        return
+    assert ufo.groups
+    assert _kern(ufo, "A", "V") < 0
+    assert _kern(ufo, "Aacute", "V") == _kern(ufo, "A", "V")
+    assert _kern(ufo, "T", "oacute") < 0
+
+
+def test_kerning_never_makes_accented_pairs_touch(each_font):
+    import ufoLib2
+
+    from letrasiq.kerning import _Profiles
+
+    name, outputs = each_font
+    if name == "letra-code":
+        return
+    root = outputs["ufo"].parent.parent
+    sources = load_glyph_sources(root)
+    placed = {n: (svg_path_to_pathops(s.path or ""), s.width or 0) for n, s in sources.items() if s.path}
+    profiles = _Profiles(placed)
+    ufo = ufoLib2.Font.open(outputs["ufo"])
+    for a, b in (("T", "odieresis"), ("T", "adieresis"), ("T", "edieresis"), ("V", "adieresis"), ("Y", "odieresis"), ("F", "adieresis"), ("P", "adieresis")):
+        gap = profiles.gap(a, b)
+        assert gap + _kern(ufo, a, b) >= 20, (a, b, gap, _kern(ufo, a, b))
+
+
 def test_only_the_monospace_font_declares_a_fixed_width(each_font):
     name, outputs = each_font
     font = TTFont(outputs["ttf"])

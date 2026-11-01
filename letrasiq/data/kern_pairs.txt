@@ -372,3 +372,26 @@ A question
 A exclam
 O colon
 O semicolon
+# Letters that open toward a following period or comma
+T period
+V period
+W period
+Y period
+P period
+F period
+r period
+v period
+w period
+y period
+A period
+L period
+T comma
+V comma
+W comma
+Y comma
+P comma
+F comma
+r comma
+v comma
+w comma
+y comma

@@ -54,6 +54,10 @@ Marks are drawn once, and anchors are worked out from each letter's outline, so 
 - `optical_depth`, `optical_factor`: how deep into a side the measurement looks, and how strongly white space reduces the sidebearing. Tune them only if rounds as a group look too tight or too loose.
 - Other `spacing` tokens: values for punctuation and symbols, which aren't spaced optically.
 
+## Kerning
+
+Kerning classes are generated from `letrasiq/data/kern_pairs.txt` and the class tables in `letrasiq/kerning.py`. Each rule takes the gentlest value its plain letters need, accented letters inherit it, and pairs that would crowd get an exception. `kern_gap` is the overall dial. Automated values are a starting point, so judge the kerning lines in `review.png`.
+
 ## Drawing rules
 
 1. Draw control glyphs first: `H O n o`, plus `a e g` for character. Get their weight, proportions and spacing right in `HHOHH` and `nnonn`, then derive every other letter from them.
