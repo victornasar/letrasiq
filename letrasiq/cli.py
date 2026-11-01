@@ -26,23 +26,18 @@ app = typer.Typer(
 
 @app.callback()
 def main() -> None:
-    """LetrasIQ — parametric local fonts."""
+    """LetrasIQ: local fonts drawn as real outlines."""
 
 
 @app.command("new")
 def cmd_new(
     name: str = typer.Argument(..., help="Font folder name, e.g. letra-sans"),
-    spec: Path = typer.Option(..., "--spec", help="Path to spec.json"),
+    spec: Optional[Path] = typer.Option(None, "--spec", help="Path to spec.json (metrics, classification)"),
     fonts: Optional[Path] = typer.Option(None, "--fonts", help="Fonts root directory"),
 ) -> None:
-    """Create a font folder from a style spec."""
-    from letrasiq.classification import apply_classification_defaults
-
-    data = json.loads(Path(spec).read_text(encoding="utf-8"))
-    if "name" not in data:
-        data["name"] = name
-    # Taxonomy fills knobs not present in the JSON; explicit keys win.
-    data = apply_classification_defaults(data, only_missing=True)
+    """Create a font folder with a starter design sheet and draw.py."""
+    data = json.loads(Path(spec).read_text(encoding="utf-8")) if spec else {}
+    data.setdefault("name", name)
     font_spec = FontSpec.from_dict(data)
     d = create_font(name, font_spec, root=fonts or fonts_root())
     typer.echo(f"Created {d}")
@@ -53,20 +48,11 @@ def cmd_new(
 @app.command("build")
 def cmd_build(
     name: str = typer.Argument(..., help="Font name"),
-    glyphs: Optional[str] = typer.Option(
-        None, "--glyphs", help="Comma-separated glyph names to prioritize"
-    ),
     fonts: Optional[Path] = typer.Option(None, "--fonts", help="Fonts root directory"),
     no_preview: bool = typer.Option(False, "--no-preview"),
 ) -> None:
     """Run the full pipeline and output fonts."""
-    only = [g.strip() for g in glyphs.split(",")] if glyphs else None
-    outputs = build_font(
-        name,
-        root=fonts or fonts_root(),
-        only_glyphs=only,
-        skip_preview=no_preview,
-    )
+    outputs = build_font(name, root=fonts or fonts_root(), skip_preview=no_preview)
     for key, path in outputs.items():
         typer.echo(f"{key}: {path}")
 

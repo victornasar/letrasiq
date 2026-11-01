@@ -1,0 +1,50 @@
+{
+  "brief": "A transitional serif for long reading: calm, crisp and bookish, more composed than decorative. Must work in 16-20 px paragraphs and still look good in a large headline.",
+  "style": {
+    "serifs": "bracketed",
+    "terminals": "ball"
+  },
+  "values": {
+    "stem": 90,
+    "thin": 33,
+    "cap_stem": 98,
+    "cap_thin": 36,
+    "stress_deg": -4,
+    "overshoot": 12,
+    "figure_height": 650,
+    "join": 0.46,
+    "tension": 1.0,
+    "space": 235,
+    "kern_gap": 90,
+    "serif_thickness": 18,
+    "serif_length": 60,
+    "optical_depth": 70,
+    "optical_factor": 0.9,
+    "optical_floor": 22
+  },
+  "spacing": {
+    "S": 70,
+    "R": 40,
+    "O": 28,
+    "D": 8,
+    "T": 12
+  },
+  "why": {
+    "thin": "33 against a stem of 90 gives moderate-to-high contrast with hairlines sturdy enough for text sizes, as the brief requires.",
+    "stress_deg": "-4 is near-vertical, the transitional axis, and calmer than the sans's -10.",
+    "x_height": "465 of 680 caps is medium-to-large: readable in paragraphs without losing a bookish look.",
+    "serifs": "Bracketed serifs join stems smoothly, which supports continuous reading.",
+    "terminals": "Ball terminals on a, c, f, r and figures are the traditional transitional detail.",
+    "S": "70 with a floor of 22 keeps serif tips from touching: stems get the floor, and rounds, with no tips, get a little more.",
+    "proportions": "Even widths give the steady rhythm the brief asks for, replacing the wide, display-looking capitals of the first version."
+  },
+  "samples": {},
+  "shape": {
+    "proportions": "even",
+    "aperture": "open",
+    "widths": {
+      "o_ratio": 0.9,
+      "O_ratio": 0.9
+    }
+  }
+}

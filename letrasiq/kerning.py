@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pathops
 
-from letrasiq.expand import path_bounds, to_cubic_path
+from letrasiq.outline import path_bounds, to_cubic_path
 from letrasiq.glyph import DIGIT_NAMES
 
 
@@ -131,8 +131,12 @@ def build_kerning(
     clamp: tuple[float, float] = (-120.0, 0.0),
 ) -> dict[tuple[str, str], int]:
     kern: dict[tuple[str, str], int] = {}
+    figures = set(DIGIT_NAMES.values())
     for left, right in load_kern_pairs():
         if left not in placed or right not in placed:
+            continue
+        # Figures share one width so columns line up; kerning would break that.
+        if left in figures and right in figures:
             continue
         lp, la = placed[left]
         rp, _ = placed[right]

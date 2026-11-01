@@ -8,13 +8,11 @@ from pathlib import Path
 import pathops
 from fontTools.ttLib import TTFont
 
-from letrasiq.cleanup import cleanup_path
 from letrasiq.drawing import load_design
-from letrasiq.expand import expand_glyph, path_bounds, svg_path_to_pathops
-from letrasiq.glyph import expected_glyphs, load_locked
+from letrasiq.outline import path_bounds, svg_path_to_pathops
+from letrasiq.glyph import ASCII_GLYPHS, load_locked
 from letrasiq.pipeline import font_dir, load_glyph_sources
 from letrasiq.quality import quality_warnings
-from letrasiq.spacing import advance_width
 from letrasiq.spec import FontSpec
 
 
@@ -71,10 +69,8 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
     for err in spec.validate():
         result.errors.append(f"spec: {err}")
 
-    # Engine-support notes describe parametric templates, which draw.py fonts don't use.
-    if not (d / "draw.py").exists():
-        for w in spec.classification_warnings():
-            result.warnings.append(w)
+    for w in spec.classification_warnings():
+        result.warnings.append(w)
 
     if spec.name != name:
         result.warnings.append(f"spec.name ({spec.name!r}) != folder name ({name!r})")
@@ -83,7 +79,7 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
     locked = load_locked(d / "locked.txt")
 
     # All expected glyphs present
-    expected = expected_glyphs(d)
+    expected = ASCII_GLYPHS
     missing = [g for g in expected if g not in sources]
     if missing:
         result.errors.append(f"missing glyphs ({len(missing)}): {', '.join(missing[:12])}"
@@ -98,76 +94,29 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
     advances: list[int] = []
     for gname, src in sources.items():
         if gname == "space":
-            adv = spec.space_advance()
-            if adv <= 0:
+            advance = src.width or spec.space_advance()
+            if advance <= 0:
                 result.errors.append("space advance must be > 0")
-            advances.append(adv)
             continue
-
-        if src.type == "drawn":
-            path = svg_path_to_pathops(src.path or "")
-            if not path:
-                result.errors.append(f"{gname}: drawn glyph has empty path")
-            elif _contour_is_open(path):
-                result.errors.append(f"{gname}: open contour")
-            if not src.width or src.width <= 0:
-                result.errors.append(f"{gname}: non-positive advance ({src.width})")
-            else:
-                advances.append(src.width)
+        path = svg_path_to_pathops(src.path or "")
+        if not path:
+            result.errors.append(f"{gname}: empty outline")
             continue
-
-        if src.type == "custom":
-            if not (src.path or "").strip():
-                result.errors.append(f"{gname}: custom glyph has empty path")
-                continue
-        elif src.type == "parametric":
-            if not src.skeleton and gname != "space":
-                result.warnings.append(f"{gname}: parametric glyph has empty skeleton")
-
-        try:
-            path = cleanup_path(expand_glyph(src, spec))
-        except Exception as e:
-            result.errors.append(f"{gname}: expand failed: {e}")
-            continue
-
-        if path and _contour_is_open(path):
+        if _contour_is_open(path):
             result.errors.append(f"{gname}: open contour")
-
         bounds = path_bounds(path)
-        if bounds is None and src.skeleton:
-            result.warnings.append(f"{gname}: no outline bounds")
-        elif bounds is not None:
-            x0, y0, x1, y1 = bounds
-            if x1 < x0 or y1 < y0:
-                result.errors.append(f"{gname}: inverted bounds")
-            # Extreme outliers vs UPM
-            if y1 > spec.ascender + spec.upm * 0.5:
-                result.warnings.append(f"{gname}: extends far above ascender ({y1:.0f})")
-            if y0 < spec.descender - spec.upm * 0.5:
-                result.warnings.append(f"{gname}: extends far below descender ({y0:.0f})")
+        if bounds is not None:
+            if bounds[3] > spec.ascender + spec.upm * 0.5:
+                result.warnings.append(f"{gname}: extends far above ascender ({bounds[3]:.0f})")
+            if bounds[1] < spec.descender - spec.upm * 0.5:
+                result.warnings.append(f"{gname}: extends far below descender ({bounds[1]:.0f})")
+        if src.width is not None and src.width <= 0:
+            result.errors.append(f"{gname}: non-positive advance ({src.width})")
+        elif src.width is not None:
+            advances.append(src.width)
 
-            adv, left, right = advance_width(gname, path, spec, explicit_width=src.width)
-            advances.append(adv)
-            if adv <= 0:
-                result.errors.append(f"{gname}: non-positive advance ({adv})")
-            if left < 0 or right < 0:
-                result.errors.append(f"{gname}: negative sidebearing")
-            # Spacing sanity: sidebearings shouldn't dwarf the glyph
-            bw = max(1.0, x1 - x0)
-            if left + right > bw * 4 and gname not in ("period", "comma", "quotesingle", "colon", "exclam"):
-                result.warnings.append(
-                    f"{gname}: sidebearings very large vs outline ({left}+{right} vs width {bw:.0f})"
-                )
-
-    if advances:
-        mean = sum(advances) / len(advances)
-        for gname, src in sources.items():
-            if gname == "space":
-                continue
-            # Recompute quickly from earlier would be better; skip heavy — warn on extreme
-            pass
-        if mean < spec.upm * 0.05:
-            result.warnings.append(f"mean advance unusually small ({mean:.0f})")
+    if advances and sum(advances) / len(advances) < spec.upm * 0.05:
+        result.warnings.append("mean advance unusually small")
 
     # Compiled font checks (if present)
     build_dir = d / "build"
@@ -195,8 +144,10 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
         except Exception as e:
             result.errors.append(f"failed to open compiled font: {e}")
 
-    if (d / "draw.py").exists():
+    if (d / "design.json").exists():
         result.warnings.extend(quality_warnings(sources, load_design(d, spec)))
+    else:
+        result.errors.append("missing design.json")
 
     if not (d / "OFL.txt").exists():
         result.warnings.append("missing OFL.txt")

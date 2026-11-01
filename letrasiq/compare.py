@@ -95,12 +95,15 @@ def materialize_font_at_ref(
         raise CompareError(f"no spec.json at {ref}:{font_rel}/spec.json")
     (out_font / "spec.json").write_bytes(spec_bytes)
 
-    for optional in ("locked.txt", "OFL.txt", "CHANGELOG.md"):
+    for optional in ("locked.txt", "OFL.txt", "CHANGELOG.md", "design.json", "draw.py"):
         data = _git_show_path(repo, ref, f"{font_rel}/{optional}")
         if data is not None:
             (out_font / optional).write_bytes(data)
         elif optional == "locked.txt":
             (out_font / optional).write_text("", encoding="utf-8")
+
+    if not (out_font / "design.json").exists():
+        raise CompareError(f"{ref} predates design sheets, so it can't be rebuilt with this engine")
 
     glyph_paths = _list_ref_glyph_files(repo, ref, font_rel)
     if not glyph_paths:

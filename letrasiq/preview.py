@@ -7,8 +7,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from fontTools.ttLib import TTFont
 
-from letrasiq.expand import svg_path_to_pathops, to_cubic_path
-from letrasiq.glyph import GlyphSource, expected_glyphs, glyph_char, glyph_filename
+from letrasiq.outline import svg_path_to_pathops, to_cubic_path
+from letrasiq.glyph import ASCII_GLYPHS, GlyphSource, glyph_char, glyph_filename
 from letrasiq.spec import FontSpec
 
 PANGRAM = "The quick brown fox jumps over the lazy dog."
@@ -90,9 +90,9 @@ def render_specimen(
     y += 20
     draw.text((48, y), "Glyph grid", fill=(140, 140, 140), font=small)
     y += 40
-    # grid of MVP printable glyphs
+    # grid of printable glyphs
     chars = []
-    for name in expected_glyphs(font_dir):
+    for name in ASCII_GLYPHS:
         ch = glyph_char(name)
         if ch and ch != " ":
             chars.append(ch)
@@ -119,6 +119,10 @@ READING = (
 )
 REVIEW_LINES = [
     ("Hamburgefonstiv", 150),
+    ("nnnonnnonnoonn", 72),
+    ("HHHOHHHOHHOOHH", 72),
+    ("nanbncndnengnhnknmnpnrnsntnunvnwnxnynz", 44),
+    ("HAHBHCHDHEHFHGHKHLHMHNHPHQHRHSHTHUHVHWHXHYHZ", 40),
     ("ABCDEFGHIJKLM", 110),
     ("NOPQRSTUVWXYZ", 110),
     ("abcdefghijklm", 110),
@@ -165,7 +169,7 @@ def render_review(font_dir: Path, spec: FontSpec | None = None) -> Path:
 def render_detail(font_dir: Path, spec: FontSpec | None = None) -> Path:
     """Every glyph's outline with its on-curve points, for inspecting construction."""
     spec = spec or FontSpec.load(font_dir / "spec.json")
-    names = [n for n in expected_glyphs(font_dir) if n != "space"]
+    names = [n for n in ASCII_GLYPHS if n != "space"]
     scale, cols, cw, ch = 0.2, 10, 190, 225
     rows = (len(names) + cols - 1) // cols
     img = Image.new("RGB", (cols * cw, rows * ch), (255, 255, 255))

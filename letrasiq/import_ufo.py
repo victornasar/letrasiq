@@ -85,7 +85,7 @@ def _ufo_glyph_to_svg_d_via_pen(glyph: ufoLib2.objects.Glyph) -> str:
             cleaned = [p for p in pts if p is not None]
             if not cleaned:
                 return
-            # Flatten to lines through points (good enough for import MVP)
+            # Flatten to lines through points (good enough for import)
             for p in cleaned:
                 commands.append(f"L {p[0]:.3f} {p[1]:.3f}")
 
@@ -131,7 +131,7 @@ def import_ufo(
     spec = FontSpec.load(d / "spec.json")
     if ufo.info.unitsPerEm:
         # keep our UPM; imported outlines stay in their coordinate space —
-        # assume same UPM as the LetrasIQ font for MVP
+        # assume same UPM as the LetrasIQ font
         if ufo.info.unitsPerEm != spec.upm:
             # Scale note only — still import raw; user can rebuild after
             pass

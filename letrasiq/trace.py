@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from letrasiq.expand import path_bounds, svg_path_to_pathops, to_cubic_path
+from letrasiq.outline import path_bounds, svg_path_to_pathops, to_cubic_path
 from letrasiq.glyph import GlyphSource, glyph_filename, load_locked, save_locked
 from letrasiq.pipeline import font_dir
 from letrasiq.spec import FontSpec
@@ -137,7 +137,7 @@ def normalize_path_to_metrics(
     bounds = path_bounds(path)
     assert bounds is not None
     x0, y0, x1, y1 = bounds
-    left_sb = int(round(spec.stroke_base() * 0.7))
+    left_sb = spec.side_bearing()
     path = path.transform(1, 0, 0, 1, left_sb - x0, -y0)
     bounds = path_bounds(path)
     assert bounds is not None

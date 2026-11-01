@@ -1,0 +1,27 @@
+{
+  "brief": "A clean sans monospace for code: quiet and sturdy, readable for hours without being noticed. Clear 0/O and 1/l/I, distinct quotes and brackets, large punctuation. Must work at 12-15 px.",
+  "style": {"serifs": "none", "terminals": "cut", "advance": 600},
+  "values": {
+    "stem": 100,
+    "thin": 84,
+    "cap_stem": 106,
+    "cap_thin": 88,
+    "stress_deg": 0,
+    "overshoot": 12,
+    "figure_height": 700,
+    "join": 0.58,
+    "tension": 1.0,
+    "space": 600,
+    "kern_gap": 95
+  },
+  "spacing": {"S": 76, "R": 42, "O": 30, "D": 12, "T": 16},
+  "why": {
+    "stem": "100 is slightly heavy, as the brief asks, and holds up on screen at 12-15 px.",
+    "thin": "84 keeps contrast low, so nothing thins out at small sizes.",
+    "x_height": "530 is large, for legibility at code sizes.",
+    "stress_deg": "0 is an upright axis: quieter and more engineered than the humanist sans.",
+    "advance": "600 is the conventional monospace width, about 0.6 em.",
+    "figures": "Figures reach cap height so they read clearly in code; zero is dotted and one has a base."
+  },
+  "samples": {}
+}

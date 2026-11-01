@@ -11,11 +11,13 @@ import json
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import pathops
 
-from letrasiq.expand import to_cubic_path
+from letrasiq.outline import to_cubic_path
 from letrasiq.glyph import GlyphSource, glyph_filename
+from letrasiq.kerning import _edge
 from letrasiq.spec import FontSpec
 
 Point = tuple[float, float]
@@ -43,6 +45,13 @@ class Design:
     kern_gap: float = 60.0
     serif_t: float = 18.0
     serif_len: float = 60.0
+    serifs: str = "none"
+    terminals: str = "cut"
+    advance: int = 0
+    shape: dict[str, Any] = field(default_factory=dict)
+    optical_depth: float = 70.0
+    optical_factor: float = 0.9
+    optical_floor: float = 14.0
     spacing: dict[str, float] = field(default_factory=dict)
     brief: str = ""
     why: dict[str, str] = field(default_factory=dict)
@@ -70,6 +79,7 @@ class Design:
     def load(cls, font_dir: Path, spec: FontSpec) -> Design:
         sheet = json.loads((font_dir / "design.json").read_text(encoding="utf-8"))
         v = sheet["values"]
+        style = sheet.get("style", {})
         return cls(
             xh=spec.x_height,
             cap=spec.cap_height,
@@ -88,6 +98,13 @@ class Design:
             kern_gap=v.get("kern_gap", 60),
             serif_t=v.get("serif_thickness", 18),
             serif_len=v.get("serif_length", 60),
+            serifs=style.get("serifs", "none"),
+            terminals=style.get("terminals", "cut"),
+            advance=style.get("advance", 0),
+            shape=sheet.get("shape", {}),
+            optical_depth=v.get("optical_depth", 70),
+            optical_factor=v.get("optical_factor", 0.9),
+            optical_floor=v.get("optical_floor", 14),
             spacing=sheet.get("spacing", {}),
             brief=sheet.get("brief", ""),
             why=sheet.get("why", {}),
@@ -358,6 +375,8 @@ def shape(start: Point, *segs: tuple) -> pathops.Path:
 
 def foot(d: Design, x0: float, x1: float, y: float = 0.0, left: bool = True, right: bool = True) -> pathops.Path:
     """Bracketed serif under a stem spanning x0..x1 at height y."""
+    if d.serifs == "slab":
+        return rect(x0 - (d.serif_len if left else 0), y, x1 + (d.serif_len if right else 0), y + d.serif_t)
     t, length, br = d.serif_t, d.serif_len, 46
     lx = x0 - length if left else x0
     rx = x1 + length if right else x1
@@ -377,6 +396,8 @@ def foot(d: Design, x0: float, x1: float, y: float = 0.0, left: bool = True, rig
 
 def head(d: Design, x0: float, x1: float, top: float) -> pathops.Path:
     """Sloped, bracketed lowercase head serif on the left of a stem."""
+    if d.serifs == "slab":
+        return rect(x0 - d.serif_len, top - d.serif_t, x1, top)
     length = d.serif_len + 8
     return shape(
         (x1, top),
@@ -520,16 +541,42 @@ class Drawing:
     def _sb(self, v: float | str) -> float:
         return self.d.spacing[v] if isinstance(v, str) else float(v)
 
+    def _optical_side(self, path: pathops.Path, top: float, pick: Any) -> tuple[float, float]:
+        """Sidebearing that balances this side's white space, and the edge it measures from.
+
+        A side that recedes (a round, a diagonal) already brings white into the gap, so it
+        gets less sidebearing than a straight stem. Only the zone letters share counts, so
+        descenders and tall overhangs don't affect it.
+        """
+        d = self.d
+        edges = _edge(path, 0.0, top, pick, 40)
+        inked = [x for x in edges if x is not None]
+        edge = pick(inked)
+        white = sum(min(abs(x - edge), d.optical_depth) if x is not None else d.optical_depth for x in edges) / len(edges)
+        return max(d.spacing["S"] - d.optical_factor * white, d.optical_floor), edge
+
     def add(
         self,
         name: str,
         parts: list[pathops.Path],
-        sb: tuple[float | str, float | str] = (40, 40),
+        sb: tuple[float | str, float | str] | None = None,
         advance: int | None = None,
     ) -> None:
-        """Add a glyph. ``advance`` fixes the width and centres the outline in it."""
+        """Add a glyph. Letters space optically unless ``sb`` overrides a side.
+
+        ``advance`` fixes the width and centres the outline in it.
+        """
         path = union(*parts)
         x0, _, x1, _ = path.bounds
+        if sb is None and advance is None and len(name) == 1 and name.isalpha():
+            top = self.d.cap if name.isupper() else self.d.xh
+            left, left_edge = self._optical_side(path, top, min)
+            right, right_edge = self._optical_side(path, top, max)
+            dx = left - left_edge
+            width = round(right_edge + dx + right)
+            self.glyphs[name] = Placed(tidy(path.transform(1, 0, 0, 1, dx, 0)), width)
+            return
+        sb = sb or (40, 40)
         if advance is None:
             left = self._sb(sb[0])
             width = round(x1 - x0 + left + self._sb(sb[1]))

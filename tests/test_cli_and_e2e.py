@@ -1,11 +1,10 @@
 import json
 from pathlib import Path
 
-from typer.testing import CliRunner
 from fontTools.ttLib import TTFont
+from typer.testing import CliRunner
 
 from letrasiq.cli import app
-from letrasiq.glyph import MVP_GLYPHS
 
 runner = CliRunner()
 
@@ -13,48 +12,36 @@ runner = CliRunner()
 def test_new_build_preview_e2e(tmp_path: Path):
     fonts = tmp_path / "fonts"
     fonts.mkdir()
-    spec = {
-        "name": "letra-sans",
-        "version": "0.1.0",
-        "weight": 0.45,
-        "contrast": 0.15,
-        "width": 0.55,
-        "slant": 0,
-        "serif_style": "none",
-        "terminal_style": "flat",
-        "corner_roundness": 0.2,
-        "aperture": 0.55,
-        "mood": "neutral",
-    }
     spec_path = tmp_path / "spec.json"
-    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    spec_path.write_text(json.dumps({"x_height": 510, "classification": "sans-serif", "subtype": "humanistic"}), encoding="utf-8")
 
-    r = runner.invoke(app, ["new", "letra-sans", "--spec", str(spec_path), "--fonts", str(fonts)])
+    r = runner.invoke(app, ["new", "demo", "--spec", str(spec_path), "--fonts", str(fonts)])
     assert r.exit_code == 0, r.output
-    font = fonts / "letra-sans"
-    assert (font / "spec.json").exists()
-    assert (font / "OFL.txt").exists()
-    assert (font / "glyphs" / "A_.json").exists()
-    assert (font / "glyphs" / "a.json").exists()
-    for name in ("zero", "period", "space"):
-        assert (font / "glyphs" / f"{name}.json").exists()
+    font = fonts / "demo"
+    for name in ("spec.json", "design.json", "draw.py", "OFL.txt"):
+        assert (font / name).exists()
 
-    r = runner.invoke(app, ["build", "letra-sans", "--fonts", str(fonts)])
+    r = runner.invoke(app, ["build", "demo", "--fonts", str(fonts)])
+    assert r.exit_code == 0, r.output
+    assert (font / "glyphs" / "H_.json").exists()
+    assert (font / "glyphs" / "n.json").exists()
+    assert (font / "build" / "previews" / "tester.html").exists()
+    assert (font / "build" / "previews" / "specimen.png").stat().st_size > 1000
+
+    cmap = TTFont(next((font / "build").glob("*.ttf"))).getBestCmap()
+    assert all(code in cmap for code in range(32, 127))
+
+    # A new font is complete from its design sheet, with no drawing needed first.
+    r = runner.invoke(app, ["check", "demo", "--fonts", str(fonts)])
     assert r.exit_code == 0, r.output
 
-    ttf = next((font / "build").glob("*.ttf"))
-    otf = next((font / "build").glob("*.otf"))
-    assert ttf.exists() and otf.exists()
-    preview = font / "build" / "previews" / "specimen.png"
-    assert preview.exists() and preview.stat().st_size > 1000
-
-    ft = TTFont(ttf)
-    glyph_order = ft.getGlyphOrder()
-    for name in MVP_GLYPHS:
-        assert name in glyph_order
-    # cmap has basic ASCII
-    cmap = ft.getBestCmap()
-    assert ord("A") in cmap and ord("a") in cmap and ord("0") in cmap
-
-    r = runner.invoke(app, ["preview", "letra-sans", "--fonts", str(fonts)])
+    r = runner.invoke(app, ["preview", "demo", "--fonts", str(fonts)])
     assert r.exit_code == 0, r.output
+
+
+def test_old_parametric_glyph_is_rejected(tmp_path: Path):
+    from letrasiq.glyph import GlyphSource
+    import pytest
+
+    with pytest.raises(ValueError, match="parametric"):
+        GlyphSource.from_dict("A", {"type": "parametric", "skeleton": []})

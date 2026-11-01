@@ -1,0 +1,15 @@
+{
+  "name": "letra-geo",
+  "version": "0.1.0",
+  "style_name": "Regular",
+  "upm": 1000,
+  "ascender": 780,
+  "descender": -210,
+  "x_height": 470,
+  "cap_height": 700,
+  "baseline": 0,
+  "mood": "clean, modern, constructed",
+  "notes": "First unseen-brief test of the engine's shape controls.",
+  "classification": "sans-serif",
+  "subtype": "geometric"
+}

@@ -60,10 +60,43 @@ def test_drawing_places_glyph_by_spacing_values():
     d = design()
     d.spacing = {"S": 70}
     f = Drawing(d)
-    f.add("I", [rect(500, 0, 600, 700)], ("S", "S"))
+    f.add("I", [rect(500, 0, 600, 700)])
     placed = f.glyphs["I"]
     assert placed.path.bounds[0] == 70
     assert placed.width == 240
+
+
+def _spaced() -> Drawing:
+    d = design()
+    d.spacing = {"S": 76}
+    return Drawing(d)
+
+
+def test_optical_spacing_gives_stems_the_full_value_and_rounds_less():
+    f = _spaced()
+    d = f.d
+    f.add("I", [rect(0, 0, 100, d.cap)])
+    cy = (d.T + d.B) / 2
+    f.add("o", [stroke(d, [(200, d.B, 0), (400, cy, 90), (200, d.T, 180), (0, cy, 270)], closed=True)])
+    f.add("v", [poly((0, d.xh), (90, d.xh), (220, 0), (160, 0)), poly((350, d.xh), (280, d.xh), (160, 0), (220, 0))])
+    stem, round_left, diagonal_left = (f.glyphs[n].path.bounds[0] for n in "Iov")
+    assert stem == 76
+    assert d.optical_floor <= diagonal_left < round_left < stem
+
+
+def test_optical_spacing_ignores_descenders_and_is_symmetric_for_symmetric_shapes():
+    f = _spaced()
+    d = f.d
+    f.add("l", [rect(0, 0, 90, d.asc)])
+    f.add("p", [rect(0, d.desc, 90, d.xh)])
+    assert f.glyphs["l"].width == f.glyphs["p"].width == 76 + 90 + 76
+
+
+def test_explicit_sidebearings_override_optical_spacing():
+    f = _spaced()
+    f.d.spacing["T"] = 10
+    f.add("I", [rect(0, 0, 100, 700)], ("T", "T"))
+    assert f.glyphs["I"].width == 120
 
 
 def test_fixed_advance_centres_outline():
@@ -91,8 +124,8 @@ def test_kerning_closes_open_pairs_and_leaves_straight_pairs(tmp_path):
     from letrasiq.kerning import kern_value
 
     f = Drawing(design())
-    f.add("A", [poly((0, 0), (100, 0), (350, 700), (250, 700)), poly((600, 0), (500, 0), (350, 700), (250, 700))])
-    f.add("V", [poly((250, 0), (350, 0), (100, 700), (0, 700)), poly((250, 0), (350, 0), (600, 700), (500, 700))])
+    f.add("A", [poly((0, 0), (100, 0), (350, 700), (250, 700)), poly((600, 0), (500, 0), (350, 700), (250, 700))], (40, 40))
+    f.add("V", [poly((250, 0), (350, 0), (100, 700), (0, 700)), poly((250, 0), (350, 0), (600, 700), (500, 700))], (40, 40))
     f.add("H", [rect(0, 0, 100, 700), rect(400, 0, 500, 700)], (80, 80))
     a, v, h = f.glyphs["A"], f.glyphs["V"], f.glyphs["H"]
     assert kern_value(a.path, a.width, v.path, target_gap=95, clamp=(-90, 0), damping=0.75) == -90
@@ -108,7 +141,7 @@ def _svg(path) -> str:
 def _copy_font(tmp_path: Path) -> Path:
     src = REPO / "fonts" / "letra-humanist"
     dest = tmp_path / "letra-humanist"
-    shutil.copytree(src, dest, ignore=shutil.ignore_patterns("build", "glyphs"))
+    shutil.copytree(src, dest, ignore=shutil.ignore_patterns("build", "glyphs", "__pycache__"))
     return dest
 
 

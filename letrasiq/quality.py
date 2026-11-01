@@ -7,7 +7,7 @@ import math
 import pathops
 
 from letrasiq.drawing import Design, _bez
-from letrasiq.expand import path_bounds, svg_path_to_pathops, to_cubic_path
+from letrasiq.outline import path_bounds, svg_path_to_pathops, to_cubic_path
 from letrasiq.glyph import GlyphSource
 
 Point = tuple[float, float]
@@ -21,8 +21,10 @@ FLAT_LOWER = "vwxz"
 FLAT_CAPS = "EFHILTZ"
 
 STEM_TOLERANCE = 8.0
+MONO_STEM_TOLERANCE = 0.2
 KINK_MIN_DEG, KINK_MAX_DEG = 4.0, 15.0
 TINY_SEGMENT = 3.0
+MIN_SELF_GAP = 34.0
 MIN_KINK_HANDLE = 20.0
 
 
@@ -113,12 +115,23 @@ def quality_warnings(sources: dict[str, GlyphSource], d: Design) -> list[str]:
     for name, path in paths.items():
         warnings.extend(_outline_problems(name, path))
 
+    # Serif tips and rounds that nearly touch show up first in doubled letters.
+    if not d.advance:
+        for ch in "HnoO":
+            if ch in paths and sources[ch].width:
+                x0, _, x1, _ = path_bounds(paths[ch])
+                gap = sources[ch].width - x1 + x0
+                if gap < MIN_SELF_GAP:
+                    warnings.append(f"{ch}: only {gap:.0f} units between {ch}{ch}, which risks touching in text")
+
     def stems(letters: str, y: float, target: float, label: str) -> None:
         for ch in letters:
             if ch not in paths:
                 continue
             width = stem_at(paths[ch], y)
-            if width is not None and abs(width - target) > STEM_TOLERANCE:
+            # Monospace letters like m are lighter on purpose, to fit their cell.
+            tolerance = target * MONO_STEM_TOLERANCE if d.advance else STEM_TOLERANCE
+            if width is not None and abs(width - target) > tolerance:
                 warnings.append(f"{ch}: {label} stem {width:.0f} differs from sheet value {target:g}")
 
     stems(LOWER_STEMS, d.xh * 0.3, d.V, "lowercase")

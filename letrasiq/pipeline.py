@@ -3,26 +3,18 @@
 from __future__ import annotations
 
 import shutil
+from importlib import resources
 from pathlib import Path
 
 import pathops
 
-from letrasiq.cleanup import cleanup_path
 from letrasiq.compile import build_ufo, compile_otf_ttf, ensure_ofl, set_name_table_license
 from letrasiq.drawing import load_design, regenerate_drawn
-from letrasiq.expand import expand_glyph, path_bounds, svg_path_to_pathops
-from letrasiq.glyph import (
-    GlyphSource,
-    MVP_GLYPHS,
-    glyph_filename,
-    glyph_name_from_path,
-    load_locked,
-)
+from letrasiq.glyph import GlyphSource, glyph_name_from_path, load_locked
 from letrasiq.kerning import build_kerning
+from letrasiq.outline import cleanup_path, path_bounds, svg_path_to_pathops
 from letrasiq.preview import render_detail, render_review, render_specimen
-from letrasiq.spacing import advance_width, shift_path
 from letrasiq.spec import FontSpec
-from letrasiq.templates import build_mvp_glyphs
 from letrasiq.tester import render_tester
 
 
@@ -45,9 +37,6 @@ def font_dir(name: str, root: Path | None = None) -> Path:
 
 
 def create_font(name: str, spec: FontSpec, root: Path | None = None) -> Path:
-    from letrasiq.classification import fill_spec_from_taxonomy
-
-    fill_spec_from_taxonomy(spec, overwrite=False)
     errors = spec.validate()
     if errors:
         raise ValueError("Invalid spec: " + "; ".join(errors))
@@ -60,15 +49,14 @@ def create_font(name: str, spec: FontSpec, root: Path | None = None) -> Path:
     (d / "build" / "previews").mkdir(parents=True)
     (d / "locked.txt").write_text("", encoding="utf-8")
     (d / "CHANGELOG.md").write_text(
-        f"# {spec.family_name()} Changelog\n\n"
-        f"- Initial create from spec (v{spec.version})\n",
+        f"# {spec.family_name()} Changelog\n\n- Created from spec (v{spec.version})\n",
         encoding="utf-8",
     )
     ensure_ofl(d)
     spec.save(d / "spec.json")
-    glyphs = build_mvp_glyphs(spec)
-    for gname, glyph in glyphs.items():
-        glyph.save(d / "glyphs" / glyph_filename(gname))
+    data = resources.files("letrasiq").joinpath("data")
+    (d / "design.json").write_text(data.joinpath("design_template.json").read_text(encoding="utf-8"), encoding="utf-8")
+    (d / "draw.py").write_text(data.joinpath("draw_template.py.txt").read_text(encoding="utf-8"), encoding="utf-8")
     return d
 
 
@@ -83,80 +71,39 @@ def load_glyph_sources(d: Path) -> dict[str, GlyphSource]:
     return sources
 
 
-# Back-compat alias
-_load_glyph_sources = load_glyph_sources
-
-
 def build_font(
     name: str,
     root: Path | None = None,
-    only_glyphs: list[str] | None = None,
     skip_preview: bool = False,
 ) -> dict[str, Path]:
     d = font_dir(name, root)
     if not d.exists():
         raise FileNotFoundError(f"Font not found: {d}")
     spec = FontSpec.load(d / "spec.json")
-    locked = load_locked(d / "locked.txt")
-    drawn_font = (d / "draw.py").exists()
-    if drawn_font:
-        regenerate_drawn(d, spec, locked)
-    sources = _load_glyph_sources(d)
+    if (d / "draw.py").exists():
+        regenerate_drawn(d, spec, load_locked(d / "locked.txt"))
+    sources = load_glyph_sources(d)
+    if not sources:
+        raise ValueError(f"{name} has no glyphs: add draw.py, trace, or import a UFO")
 
-    if not drawn_font:
-        # Ensure MVP coverage: fill missing from templates (unless locked missing — still generate)
-        templates = build_mvp_glyphs(spec)
-        for gname in MVP_GLYPHS:
-            if gname not in sources:
-                sources[gname] = templates[gname]
-                sources[gname].save(d / "glyphs" / glyph_filename(gname))
-
-    # Partial rebuild: still need all glyphs for font compile, but regenerate
-    # parametric unlocked ones always from current skeleton+spec.
-    placed: dict[str, tuple[pathops.Path, int]] = {}
-
-    target_names = list(sources.keys())
-    if only_glyphs:
-        # rebuild requested glyphs' outlines; others loaded from previous UFO if present —
-        # for MVP simplicity, always rebuild full font but only re-expand requested
-        # when only_glyphs set — still expand all for a consistent binary.
-        pass
-
+    placed: dict[str, tuple[pathops.Path, int]] = {"space": (pathops.Path(), spec.space_advance())}
     for gname, src in sources.items():
-        if only_glyphs and gname not in only_glyphs and gname != "space":
-            # Still expand — full font required. only_glyphs is a filter for
-            # which parametric glyphs to refresh from disk (all are on disk).
-            pass
-
-        if src.type == "parametric" and gname in locked and gname != "space":
-            # Locked parametric: still use the on-disk skeleton (hand-edited),
-            # do not replace from templates — already loaded from disk.
-            pass
-
         if gname == "space":
             placed[gname] = (pathops.Path(), src.width or spec.space_advance())
-            continue
-
-        if src.type == "drawn":
+        elif src.type == "drawn":
             # Already spaced and tidied by draw.py.
             placed[gname] = (svg_path_to_pathops(src.path or ""), src.width or 0)
-            continue
+        else:
+            path = cleanup_path(svg_path_to_pathops(src.path or ""))
+            bounds = path_bounds(path)
+            # Without an explicit width, mirror the left sidebearing on the right.
+            inferred = int(round(bounds[2] + max(bounds[0], 0))) if bounds else spec.space_advance()
+            placed[gname] = (path, src.width or inferred)
 
-        path = expand_glyph(src, spec)
-        path = cleanup_path(path)
-        bounds = path_bounds(path)
-        adv, left, right = advance_width(gname, path, spec, explicit_width=src.width)
-        if bounds is not None:
-            # shift so xmin == left sidebearing
-            dx = left - bounds[0]
-            path = shift_path(path, dx)
-        placed[gname] = (path, adv)
-
-    if drawn_font:
-        kern = build_kerning(placed, target_gap=load_design(d, spec).kern_gap, damping=0.75, clamp=(-90.0, 0.0))
-    else:
-        kern = build_kerning(placed, target_gap=spec.stroke_base() * 0.55)
-    ufo = build_ufo(spec, placed, kerning=kern)
+    design = load_design(d, spec)
+    # Kerning would break a monospace font's single advance.
+    kern = {} if design.advance else build_kerning(placed, target_gap=design.kern_gap, damping=0.75, clamp=(-90.0, 0.0))
+    ufo = build_ufo(spec, placed, kerning=kern, fixed_advance=design.advance)
 
     build_dir = d / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -172,33 +119,11 @@ def build_font(
 
     if not skip_preview:
         outputs["preview"] = render_specimen(d, spec)
-        if drawn_font:
-            outputs["review"] = render_review(d, spec)
-            outputs["detail"] = render_detail(d, spec)
-            outputs["tester"] = render_tester(d, spec)
+        outputs["review"] = render_review(d, spec)
+        outputs["detail"] = render_detail(d, spec)
+        outputs["tester"] = render_tester(d, spec)
 
     return outputs
-
-
-def regenerate_unlocked_from_templates(name: str, root: Path | None = None) -> int:
-    """Rewrite parametric unlocked glyphs from built-in templates (after global spec change)."""
-    d = font_dir(name, root)
-    spec = FontSpec.load(d / "spec.json")
-    locked = load_locked(d / "locked.txt")
-    templates = build_mvp_glyphs(spec)
-    count = 0
-    for gname, glyph in templates.items():
-        if gname in locked:
-            continue
-        dest = d / "glyphs" / glyph_filename(gname)
-        if dest.exists():
-            existing = GlyphSource.load(dest)
-            existing.name = gname
-            if existing.type == "custom":
-                continue
-        glyph.save(dest)
-        count += 1
-    return count
 
 
 def fork_font(name: str, new_name: str, root: Path | None = None) -> Path:

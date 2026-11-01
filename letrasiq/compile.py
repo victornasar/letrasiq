@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import math
 from importlib import resources
 from pathlib import Path
 
 import pathops
 import ufoLib2
-from fontTools.ttLib import TTFont
+from fontTools.ttLib import TTFont, newTable
+from fontTools.ttLib.tables.ttProgram import Program
 
+from letrasiq.outline import path_bounds
 from letrasiq.spec import FontSpec
 
 
@@ -26,6 +29,7 @@ def build_ufo(
     spec: FontSpec,
     glyphs: dict[str, tuple[pathops.Path, int]],
     kerning: dict[tuple[str, str], int] | None = None,
+    fixed_advance: int = 0,
 ) -> ufoLib2.Font:
     ufo = ufoLib2.Font()
     ufo.info.familyName = spec.family_name()
@@ -42,8 +46,15 @@ def build_ufo(
     ufo.info.openTypeOS2TypoAscender = spec.ascender
     ufo.info.openTypeOS2TypoDescender = spec.descender
     ufo.info.openTypeOS2TypoLineGap = 0
-    ufo.info.openTypeOS2WinAscent = spec.ascender
-    ufo.info.openTypeOS2WinDescent = abs(spec.descender)
+    # Windows clips anything outside its ascent and descent, so they must cover
+    # every glyph. Typo metrics then keep line spacing independent of those values.
+    bounds = [b for b in (path_bounds(path) for path, _ in glyphs.values()) if b]
+    ufo.info.openTypeOS2WinAscent = max([spec.ascender, *(math.ceil(b[3]) for b in bounds)])
+    ufo.info.openTypeOS2WinDescent = max([abs(spec.descender), *(math.ceil(-b[1]) for b in bounds)])
+    ufo.info.openTypeOS2Selection = [7]
+    ufo.info.openTypeHheaAscender = spec.ascender
+    ufo.info.openTypeHheaDescender = spec.descender
+    ufo.info.openTypeHheaLineGap = 0
 
     from letrasiq.glyph import glyph_unicode
 
@@ -55,7 +66,26 @@ def build_ufo(
             path.draw(pen)
         cp = glyph_unicode(name)
         if cp is not None:
-            g.unicodes = [cp]
+            # The non-breaking space shares the space glyph.
+            g.unicodes = [cp, 0x00A0] if name == "space" else [cp]
+
+    if fixed_advance:
+        ufo.info.postscriptIsFixedPitch = True
+        ufo.info.openTypeOS2Panose = [2, 11, 5, 9, 0, 0, 0, 0, 0, 0]
+
+    # The fallback glyph is a visible box, on the font's single width if it has one.
+    notdef = ufo.newGlyph(".notdef")
+    notdef.width = fixed_advance or 500
+    box = (notdef.width - 400) / 2
+    pen = notdef.getPen()
+    for contour in (
+        [(box, 0), (box + 400, 0), (box + 400, spec.cap_height), (box, spec.cap_height)],
+        [(box + 40, 40), (box + 40, spec.cap_height - 40), (box + 360, spec.cap_height - 40), (box + 360, 40)],
+    ):
+        pen.moveTo(contour[0])
+        for point in contour[1:]:
+            pen.lineTo(point)
+        pen.closePath()
 
     if kerning:
         for (a, b), val in kerning.items():
@@ -123,12 +153,27 @@ def compile_otf_ttf(
             produced[ext] = exact
 
     if "ttf" in produced:
+        _set_unhinted_rendering(produced["ttf"])
         woff2 = out_dir / f"{stem}.woff2"
         _ttf_to_woff2(produced["ttf"], woff2)
         produced["woff2"] = woff2
 
     produced["ufo"] = ufo_path
     return produced
+
+
+def _set_unhinted_rendering(ttf_path: Path) -> None:
+    """Ask rasterizers for smart dropout and smoothing, as an unhinted TrueType font should."""
+    font = TTFont(ttf_path)
+    prep = newTable("prep")
+    prep.program = Program()
+    prep.program.fromAssembly(["PUSHW[]", "511", "SCANCTRL[]", "PUSHB[]", "4", "SCANTYPE[]"])
+    font["prep"] = prep
+    gasp = newTable("gasp")
+    gasp.gaspRange = {0xFFFF: 0x000F}
+    font["gasp"] = gasp
+    font["head"].flags |= 1 << 3
+    font.save(ttf_path)
 
 
 def _ttf_to_woff2(ttf_path: Path, woff2_path: Path) -> None:
@@ -155,5 +200,5 @@ def set_name_table_license(font_path: Path, family: str) -> None:
         (14, "https://scripts.sil.org/OFL"),
     ):
         name.setName(string, nid, 3, 1, 0x409)
-        name.setName(string, nid, 1, 0, 0)
+    name.names = [n for n in name.names if n.platformID != 1]
     font.save(font_path)

@@ -306,9 +306,6 @@ Z Y
 z a
 z e
 z o
-one seven
-seven one
-four seven
 A hyphen
 T hyphen
 V hyphen

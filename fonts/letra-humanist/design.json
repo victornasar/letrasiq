@@ -11,7 +11,10 @@
     "join": 0.5,
     "tension": 1.0,
     "space": 245,
-    "kern_gap": 95
+    "kern_gap": 95,
+    "optical_depth": 70,
+    "optical_factor": 0.9,
+    "optical_floor": 14
   },
   "spacing": {
     "S": 76,
@@ -29,7 +32,8 @@
     "proportions": "Round capitals are wide and E, F, L, S and B narrow, following classical humanist proportions.",
     "apertures": "Open terminals on a, c, e and s stop those letters closing up at small sizes.",
     "kern_gap": "95 sits between round-round (84) and stem-stem (152) spacing, so open pairs like A V and T o close up without crowding.",
-    "l_tail": "The lowercase l has a small tail so l, I and 1 stay distinct in interface text."
+    "l_tail": "The lowercase l has a small tail so l, I and 1 stay distinct in interface text.",
+    "optical_spacing": "Letters space from measured white space. A depth of 70 and factor of 0.9 land near this font's earlier by-eye values, so S (76) is the one spacing dial for letters."
   },
   "samples": {}
 }

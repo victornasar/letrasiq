@@ -1,0 +1,32 @@
+{
+  "brief": "",
+  "style": {
+    "serifs": "none",
+    "terminals": "cut"
+  },
+  "values": {
+    "stem": 90,
+    "thin": 72,
+    "cap_stem": 98,
+    "cap_thin": 80,
+    "stress_deg": 0,
+    "overshoot": 12,
+    "figure_height": 680,
+    "join": 0.5,
+    "tension": 1.0,
+    "space": 250,
+    "kern_gap": 95,
+    "optical_depth": 70,
+    "optical_factor": 0.9,
+    "optical_floor": 14
+  },
+  "spacing": {
+    "S": 76,
+    "R": 42,
+    "O": 30,
+    "D": 12,
+    "T": 16
+  },
+  "why": {},
+  "samples": {}
+}

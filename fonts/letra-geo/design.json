@@ -1,0 +1,27 @@
+{
+  "brief": "A clean geometric sans for headlines and short text: built from circles and straight lines, modern and confident, with very even strokes.",
+  "style": {"serifs": "none", "terminals": "cut"},
+  "shape": {"proportions": "geometric", "a": "single", "g": "single", "l": "plain", "aperture": "open"},
+  "values": {
+    "stem": 90,
+    "thin": 82,
+    "cap_stem": 96,
+    "cap_thin": 88,
+    "stress_deg": 0,
+    "overshoot": 12,
+    "figure_height": 690,
+    "join": 0.62,
+    "tension": 1.0,
+    "space": 240,
+    "kern_gap": 90
+  },
+  "spacing": {"S": 72, "R": 40, "O": 28, "D": 12, "T": 16},
+  "why": {
+    "proportions": "Geometric: o and O are circles, and E, F, L, S, B, P and R are narrow, as the brief's 'circles and straight lines' implies.",
+    "a_g": "Single-story a and g are the most circular forms.",
+    "thin": "82 against a stem of 90 is the very low contrast the brief calls 'even'; horizontals stay slightly thinner so they don't look heavier.",
+    "stress_deg": "0 is an upright axis, as constructed shapes have no pen angle.",
+    "x_height": "470 is low against tall ascenders, which gives the classic geometric proportion."
+  },
+  "samples": {}
+}
