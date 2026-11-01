@@ -13,7 +13,7 @@ from letrasiq.drawing import load_design, regenerate_drawn
 from letrasiq.glyph import GlyphSource, glyph_name_from_path, load_locked
 from letrasiq.kerning import build_kerning
 from letrasiq.outline import cleanup_path, path_bounds, svg_path_to_pathops
-from letrasiq.preview import render_detail, render_review, render_specimen
+from letrasiq.preview import render_detail, render_detail_core, render_review, render_specimen
 from letrasiq.spec import FontSpec
 from letrasiq.tester import render_tester
 
@@ -103,7 +103,10 @@ def build_font(
     design = load_design(d, spec)
     # Kerning would break a monospace font's single advance.
     kern = {} if design.advance else build_kerning(placed, target_gap=design.kern_gap, damping=0.75, clamp=(-90.0, 0.0))
-    ufo = build_ufo(spec, placed, kerning=kern, fixed_advance=design.advance)
+    ufo = build_ufo(
+        spec, placed, kerning=kern, fixed_advance=design.advance,
+        anchors={name: src.anchors for name, src in sources.items() if src.anchors},
+    )
 
     build_dir = d / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
@@ -121,6 +124,7 @@ def build_font(
         outputs["preview"] = render_specimen(d, spec)
         outputs["review"] = render_review(d, spec)
         outputs["detail"] = render_detail(d, spec)
+        outputs["detail_core"] = render_detail_core(d, spec)
         outputs["tester"] = render_tester(d, spec)
         # Imported here because the report uses check, which uses this module.
         from letrasiq.report import render_report

@@ -7,7 +7,8 @@ from dataclasses import replace
 import pathops
 
 from letrasiq.drawing import Design, Drawing, Placed, oval, rect, stroke, tidy, union
-from letrasiq.latin import draw_latin
+from letrasiq.latin import draw_base
+from letrasiq.latin_core import add_latin_core, glyph_name
 
 # How much of a glyph's squeeze its stems share. Mild squeezes keep full weight, while
 # m and w go somewhat lighter so their counters stay open.
@@ -37,7 +38,7 @@ def _fit(d: Design, base: Drawing, advance: int, margin: float) -> dict[str, Pla
         # Drawing stems wider by the inverse of the squeeze cancels it out.
         if scale not in redrawn:
             k = (1 - (1 - scale) * WEIGHT_GIVE) / scale
-            redrawn[scale] = draw_latin(replace(d, V=d.V * k, CV=d.CV * k))
+            redrawn[scale] = draw_base(replace(d, V=d.V * k, CV=d.CV * k))
         path = redrawn[scale].glyphs[name].path
         x0, _, x1, _ = path.bounds
         out[name] = _centered(path.transform(limit / (x1 - x0), 0, 0, 1, 0, 0), advance)
@@ -55,6 +56,7 @@ def _slab_letters(d: Design, f: Drawing, advance: int) -> None:
         f.glyphs[name] = _centered(union(*parts), advance)
 
     place("i", [rect(x, 0, x + V, xh), rect(left + 25, xh - H, x + V, xh), rect(left, 0, right, H), dot])
+    place("dotlessi", [rect(x, 0, x + V, xh), rect(left + 25, xh - H, x + V, xh), rect(left, 0, right, H)])
     place("l", [rect(x, 0, x + V, asc), rect(left + 25, asc - H, x + V, asc), rect(left, 0, right, H)])
     jc = x + V / 2 + 50
     low = d.desc + d.os + H / 2
@@ -72,6 +74,8 @@ def _slab_letters(d: Design, f: Drawing, advance: int) -> None:
     tc = x + V / 2 - 25
     place("t", [stroke(d, [(tc, xh + 125, 270), (tc, 160, 270), (tc + 122, B, 0), (tc + 245, xh * 0.1, 28, 0.76)]),
                 rect(left - 5, xh - H, right - 25, xh)])
+    place(glyph_name(0x0237), [stroke(d, [(jc, xh - 4, 270), (jc, 20, 270), (jc - 120, low, 180), (jc - 262, low + 34, 158, 0.82)]),
+                               rect(left + 45, xh - H, jc + V / 2, xh)])
     cx = (advance - d.CV) / 2
     place("I", [rect(cx, 0, cx + d.CV, cap), rect(left + 10, cap - d.CH, right - 10, cap), rect(left + 10, 0, right - 10, d.CH)])
 
@@ -90,7 +94,8 @@ def draw_mono(d: Design) -> Drawing:
     advance = d.advance or 600
     margin = 44.0
     f = Drawing(d)
-    f.glyphs = _fit(d, draw_latin(d), advance, margin)
+    f.glyphs = _fit(d, draw_base(d), advance, margin)
     _slab_letters(d, f, advance)
     _clear_figures(d, f, advance)
+    add_latin_core(f, d)
     return f

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
+
+from fontTools.agl import toUnicode
 
 GlyphType = Literal["custom", "drawn"]
 
@@ -76,11 +78,14 @@ class GlyphSource:
     type: GlyphType
     path: str | None = None
     width: int | None = None
+    anchors: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {"type": self.type, "path": self.path or ""}
         if self.width is not None:
             data["width"] = self.width
+        if self.anchors:
+            data["anchors"] = {k: list(v) for k, v in self.anchors.items()}
         return data
 
     def save(self, path: Path) -> None:
@@ -91,7 +96,7 @@ class GlyphSource:
         gtype = data.get("type", "custom")
         if gtype not in ("custom", "drawn"):
             raise ValueError(f"{name}: unsupported glyph type {gtype!r}")
-        return cls(name=name, type=gtype, path=data.get("path", ""), width=data.get("width"))
+        return cls(name=name, type=gtype, path=data.get("path", ""), width=data.get("width"), anchors=data.get("anchors", {}))
 
     @classmethod
     def load(cls, path: Path) -> GlyphSource:
@@ -109,7 +114,8 @@ def glyph_char(name: str) -> str | None:
     for digit, gname in DIGIT_NAMES.items():
         if gname == name:
             return digit
-    return None
+    char = toUnicode(name)
+    return char if len(char) == 1 else None
 
 
 def glyph_unicode(name: str) -> int | None:
@@ -148,18 +154,13 @@ def assert_safe_glyph_name(name: str) -> None:
 
 
 def glyph_filename(name: str) -> str:
-    """Case-insensitive-safe filename for a glyph (UFO-style underscore).
+    """Case-insensitive-safe filename for a glyph (UFO-style underscore after capitals).
 
-    On APFS/HFS default volumes, ``A.json`` and ``a.json`` collide. Uppercase
-    single-letter glyphs are stored as ``A_.json``.
+    On APFS/HFS default volumes, ``Aacute.json`` and ``aacute.json`` collide, so
+    ``Aacute`` is stored as ``A_acute.json`` and ``A`` as ``A_.json``.
     """
-    if len(name) == 1 and name.isupper():
-        return f"{name}_.json"
-    return f"{name}.json"
+    return re.sub(r"([A-Z])", r"\1_", name) + ".json"
 
 
 def glyph_name_from_path(path: Path) -> str:
-    stem = path.stem
-    if len(stem) == 2 and stem[0].isupper() and stem[1] == "_":
-        return stem[0]
-    return stem
+    return re.sub(r"([A-Z])_", r"\1", path.stem)

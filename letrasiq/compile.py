@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
 import pathops
 import ufoLib2
@@ -30,6 +31,7 @@ def build_ufo(
     glyphs: dict[str, tuple[pathops.Path, int]],
     kerning: dict[tuple[str, str], int] | None = None,
     fixed_advance: int = 0,
+    anchors: dict[str, dict[str, Any]] | None = None,
 ) -> ufoLib2.Font:
     ufo = ufoLib2.Font()
     ufo.info.familyName = spec.family_name()
@@ -68,6 +70,8 @@ def build_ufo(
         if cp is not None:
             # The non-breaking space shares the space glyph.
             g.unicodes = [cp, 0x00A0] if name == "space" else [cp]
+        for anchor, (x, y) in (anchors or {}).get(name, {}).items():
+            g.appendAnchor({"name": anchor, "x": x, "y": y})
 
     if fixed_advance:
         ufo.info.postscriptIsFixedPitch = True

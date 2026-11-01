@@ -26,13 +26,17 @@ CODE = (
     "    return sum(x * 2 for x in items if x != 0)\n\nconst ok = a <= b && c >= d || !e;"
 )
 HEADLINE = "Hamburgefonstiv"
+LANGUAGES = (
+    "Français: à côté, déjà vu, garçon\nEspañol: ¿Qué tal, señor? ¡Olé!\nDeutsch: Größe, Äpfel, Straße\n"
+    "Polski: Żółć, gęślą jaźń\nČeština: žluťoučký kůň\nMagyar: árvíztűrő tükörfúrógép\nDansk: blåbærgrød, Øresund"
+)
 FIGURES = "0123456789 $48.50 72% #1 (a+b)=c"
 
 # First sample opens the page, so each genre leads with the use its brief cares about.
 SAMPLES_BY_CLASS: dict[str, dict[str, str]] = {
-    "sans-serif": {"Interface": INTERFACE, "Headline": HEADLINE, "Figures": FIGURES, "Reading": READING},
-    "serif": {"Reading": READING, "Headline": HEADLINE, "Figures": FIGURES},
-    "monospace": {"Code": CODE, "Headline": HEADLINE, "Figures": FIGURES, "Reading": READING},
+    "sans-serif": {"Interface": INTERFACE, "Headline": HEADLINE, "Figures": FIGURES, "Languages": LANGUAGES, "Reading": READING},
+    "serif": {"Reading": READING, "Headline": HEADLINE, "Figures": FIGURES, "Languages": LANGUAGES},
+    "monospace": {"Code": CODE, "Headline": HEADLINE, "Figures": FIGURES, "Languages": LANGUAGES, "Reading": READING},
 }
 
 

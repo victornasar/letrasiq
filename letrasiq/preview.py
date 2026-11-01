@@ -131,6 +131,9 @@ REVIEW_LINES = [
     ("!\"#$%&'()*+,-./:;<=>?", 80),
     ("@[\\]^_`{|}~", 80),
     ("minimum illicit Tower AVATAR Typography Wave", 62),
+    ("ÀÉÎÕÜ Çàéîõü ñçšžł ÅÆØ åæø Œœ ß Þþ Ðð Ħħ", 70),
+    ("Ångström Çelik Żółć žluťoučký Őrült Ñandú Ģirts", 58),
+    ("“Quotes” ‘single’ «guillemets» „low“ – en — em … € £ ¥ ¢ © ® ™ § ¶ ° × ÷ − • ¡Sí! ¿Qué?", 44),
 ]
 
 
@@ -166,16 +169,31 @@ def render_review(font_dir: Path, spec: FontSpec | None = None) -> Path:
     return out
 
 
+def _core_names() -> list[str]:
+    from letrasiq.latin_core import core_codes, glyph_name
+
+    ascii_names = set(ASCII_GLYPHS)
+    return [glyph_name(code) for code in core_codes() if glyph_name(code) not in ascii_names and code != 0x00A0]
+
+
 def render_detail(font_dir: Path, spec: FontSpec | None = None) -> Path:
-    """Every glyph's outline with its on-curve points, for inspecting construction."""
-    spec = spec or FontSpec.load(font_dir / "spec.json")
+    """Every ASCII glyph's outline with its on-curve points, for inspecting construction."""
     names = [n for n in ASCII_GLYPHS if n != "space"]
-    scale, cols, cw, ch = 0.2, 10, 190, 225
+    return _outline_sheet(font_dir, spec, names, "detail.png", 0.2, 10, 190, 225)
+
+
+def render_detail_core(font_dir: Path, spec: FontSpec | None = None) -> Path:
+    """The same view of the glyphs beyond ASCII: accents, ligatures, currency and punctuation."""
+    return _outline_sheet(font_dir, spec, _core_names(), "detail-core.png", 0.13, 16, 120, 160)
+
+
+def _outline_sheet(font_dir: Path, spec: FontSpec | None, names: list[str], filename: str, scale: float, cols: int, cw: int, ch: int) -> Path:
+    spec = spec or FontSpec.load(font_dir / "spec.json")
     rows = (len(names) + cols - 1) // cols
     img = Image.new("RGB", (cols * cw, rows * ch), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     for i, name in enumerate(names):
-        ox, oy = (i % cols) * cw + 10, (i // cols) * ch + 165
+        ox, oy = (i % cols) * cw + 24, (i // cols) * ch + int(ch * 0.73)
         draw.line([(ox - 4, oy), (ox + cw - 18, oy)], fill=(190, 205, 225))
         xh = oy - spec.x_height * scale
         draw.line([(ox - 4, xh), (ox + cw - 18, xh)], fill=(190, 205, 225))
@@ -204,7 +222,7 @@ def render_detail(font_dir: Path, spec: FontSpec | None = None) -> Path:
             if verb in ("moveTo", "lineTo", "curveTo"):
                 p = pts[-1]
                 draw.rectangle([ox + p[0] * scale - 1, oy - p[1] * scale - 1, ox + p[0] * scale + 1, oy - p[1] * scale + 1], fill=(214, 60, 40))
-    out = font_dir / "build" / "previews" / "detail.png"
+    out = font_dir / "build" / "previews" / filename
     img.save(out, "PNG")
     return out
 

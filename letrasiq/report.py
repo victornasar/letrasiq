@@ -23,6 +23,8 @@ PASSED, FAILED, PERSON = "passed", "failed", "needs a person"
 CONTROL_GLYPHS = "HOnoaevps"
 TEXT_FEATURES = {"kern", "mark", "mkmk", "ccmp", "liga", "tnum", "pnum", "case"}
 MONO_FEATURES = {"mark", "mkmk", "ccmp", "case"}
+# This check sends the family name to an online service, so builds would need the network.
+FONT_BAKERY_EXCLUDE = ["--exclude-checkid", "fontdata_namecheck"]
 LATER = "Weights, italics, widths, variable fonts, small caps, oldstyle figures, fractions and stylistic sets."
 
 
@@ -93,7 +95,7 @@ def font_bakery(profile: str, font: Path) -> Stage:
         out = Path(tmp) / "report.json"
         try:
             subprocess.run(
-                [sys.executable, "-m", "fontbakery", f"check-{profile}", str(font), "-q", "--json", str(out)],
+                [sys.executable, "-m", "fontbakery", f"check-{profile}", str(font), "-q", "--json", str(out), *FONT_BAKERY_EXCLUDE],
                 capture_output=True,
                 timeout=300,
             )

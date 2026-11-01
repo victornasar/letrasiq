@@ -529,6 +529,7 @@ def tidy(path: pathops.Path) -> pathops.Path:
 class Placed:
     path: pathops.Path
     width: int
+    anchors: dict[str, tuple[int, int]] = field(default_factory=dict)
 
 
 class Drawing:
@@ -559,16 +560,16 @@ class Drawing:
         self,
         name: str,
         parts: list[pathops.Path],
-        sb: tuple[float | str, float | str] | None = None,
+        sb: tuple[float | str, float | str] | str | None = None,
         advance: int | None = None,
     ) -> None:
-        """Add a glyph. Letters space optically unless ``sb`` overrides a side.
+        """Add a glyph. Letters, or ``sb="optical"``, space optically unless ``sb`` overrides.
 
         ``advance`` fixes the width and centres the outline in it.
         """
         path = union(*parts)
         x0, _, x1, _ = path.bounds
-        if sb is None and advance is None and len(name) == 1 and name.isalpha():
+        if (sb == "optical" or (sb is None and len(name) == 1 and name.isalpha())) and advance is None:
             top = self.d.cap if name.isupper() else self.d.xh
             left, left_edge = self._optical_side(path, top, min)
             right, right_edge = self._optical_side(path, top, max)
@@ -619,7 +620,7 @@ def regenerate_drawn(font_dir: Path, spec: FontSpec, locked: set[str]) -> int:
     for name, placed in drawing.glyphs.items():
         if name in locked:
             continue
-        source = GlyphSource(name=name, type="drawn", path=path_to_svg(placed.path), width=placed.width)
+        source = GlyphSource(name=name, type="drawn", path=path_to_svg(placed.path), width=placed.width, anchors=placed.anchors)
         source.save(font_dir / "glyphs" / glyph_filename(name))
         count += 1
     return count

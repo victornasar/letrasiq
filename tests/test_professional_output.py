@@ -13,6 +13,7 @@ from fontTools.ttLib import TTFont
 
 from letrasiq.outline import path_bounds, svg_path_to_pathops
 from letrasiq.pipeline import build_font, load_glyph_sources
+from letrasiq.report import FONT_BAKERY_EXCLUDE, latin_core
 
 REPO = Path(__file__).resolve().parent.parent
 FIGURES = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
@@ -88,7 +89,7 @@ def test_only_the_monospace_font_declares_a_fixed_width(each_font):
     font = TTFont(outputs["ttf"])
     widths = {font["hmtx"][g][0] for g in font.getGlyphOrder()}
     if name == "letra-code":
-        assert widths == {600}
+        assert widths <= {0, 600}  # combining marks have no width of their own
         assert font["post"].isFixedPitch == 1
     else:
         assert len(widths) > 1
@@ -99,6 +100,29 @@ def test_every_font_covers_ascii_from_its_sheet_alone(each_font):
     _, outputs = each_font
     cmap = TTFont(outputs["ttf"]).getBestCmap()
     assert all(code in cmap for code in range(32, 127))
+
+
+def test_every_font_covers_latin_core_from_its_sheet_alone(each_font):
+    _, outputs = each_font
+    assert latin_core() <= set(TTFont(outputs["ttf"]).getBestCmap())
+
+
+def test_accents_stay_clear_of_their_letters(each_font):
+    _, outputs = each_font
+    glyf = TTFont(outputs["ttf"])["glyf"]
+    for base, accented in (("o", "oacute"), ("n", "ntilde"), ("O", "Odieresis"), ("A", "Aring")):
+        glyf[base].recalcBounds(glyf)
+        glyf[accented].recalcBounds(glyf)
+        assert glyf[accented].yMax > glyf[base].yMax + 40, accented
+
+
+def test_bases_and_marks_carry_anchors(each_font):
+    import ufoLib2
+
+    _, outputs = each_font
+    ufo = ufoLib2.Font.open(outputs["ufo"])
+    assert {a.name for a in ufo["a"].anchors} >= {"top", "bottom"}
+    assert {a.name for a in ufo["acutecomb"].anchors} >= {"_top"}
 
 
 def test_fallback_glyph_is_drawn(each_font):
@@ -113,7 +137,7 @@ def test_font_bakery_universal_profile_has_no_failures(each_font, key, tmp_path)
     name, outputs = each_font
     report = tmp_path / "report.json"
     subprocess.run(
-        [sys.executable, "-m", "fontbakery", "check-universal", str(outputs[key]), "-q", "--json", str(report)],
+        [sys.executable, "-m", "fontbakery", "check-universal", str(outputs[key]), "-q", "--json", str(report), *FONT_BAKERY_EXCLUDE],
         capture_output=True,
     )
     data = json.loads(report.read_text(encoding="utf-8"))

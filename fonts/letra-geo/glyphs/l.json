@@ -1,5 +1,19 @@
 {
   "type": "drawn",
   "path": "M72 0L162 0L162 780L72 766Z",
-  "width": 234
+  "width": 234,
+  "anchors": {
+    "top": [
+      117,
+      842
+    ],
+    "bottom": [
+      117,
+      0
+    ],
+    "ogonek": [
+      122,
+      0
+    ]
+  }
 }

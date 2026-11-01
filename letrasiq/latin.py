@@ -12,6 +12,7 @@ from dataclasses import replace
 import pathops
 
 from letrasiq.drawing import Design, Drawing, diag, foot, head, oval, poly, rect, shape, stroke
+from letrasiq.latin_core import add_latin_core, glyph_name
 
 
 class Kit:
@@ -90,13 +91,13 @@ class Kit:
 
 # Letter groups whose widths move together, as designers think of them.
 WIDTH_GROUPS = {
-    "round_lower": "abcdegopq",
-    "arch_lower": "hmnu",
-    "narrow_lower": "s",
-    "diagonal_lower": "kvwxyz",
-    "round_caps": "CDGOQ",
-    "narrow_caps": "BEFLPRS",
-    "wide_caps": "AHKMNTUVWXYZ",
+    "round_lower": [*"abcdegopq", "thorn", "eth"],
+    "arch_lower": [*"hmnu"],
+    "narrow_lower": [*"s", "germandbls"],
+    "diagonal_lower": [*"kvwxyz"],
+    "round_caps": [*"CDGOQ"],
+    "narrow_caps": [*"BEFLPRS", "Thorn", "uni1E9E"],
+    "wide_caps": [*"AHKMNTUVWXYZ"],
 }
 
 # o_ratio and O_ratio set round letters by shape: width over height, with 1.0 a circle.
@@ -124,7 +125,14 @@ def _width_scales(d: Design, base: Drawing) -> dict[str, float]:
 
 
 def draw_latin(d: Design) -> Drawing:
-    """All glyphs at the sheet's proportions, with stems redrawn so they keep their weight."""
+    """The whole Latin Core set at the sheet's proportions."""
+    f = draw_base(d)
+    add_latin_core(f, d)
+    return f
+
+
+def draw_base(d: Design) -> Drawing:
+    """Basic letters at the sheet's proportions, with stems redrawn so they keep their weight."""
     base = construct(d)
     out = Drawing(d)
     out.glyphs = dict(base.glyphs)
@@ -135,7 +143,7 @@ def draw_latin(d: Design) -> Drawing:
             continue
         if scale not in redrawn:
             redrawn[scale] = construct(replace(d, V=d.V / scale, CV=d.CV / scale))
-        out.add(name, [redrawn[scale].glyphs[name].path.transform(scale, 0, 0, 1, 0, 0)])
+        out.add(name, [redrawn[scale].glyphs[name].path.transform(scale, 0, 0, 1, 0, 0)], sb=None if len(name) == 1 else "optical")
     return out
 
 
@@ -386,6 +394,25 @@ def construct(d: Design) -> Drawing:
     z_t = 104 if not S else V * 1.06
     f.add("z", [rect(14, xh - H, 372, xh), rect(0, 0, 382, H), diag(0, 24 if not S else H, 372 - z_t, xh - 24 if not S else xh - H, z_t),
                 *k.beak(14, xh, 110, 54, flip_x=True), *k.beak(382, 0, 120, 54, flip_y=True)])
+
+    # ---- Letters without an ASCII base: drawn here because they need the bowl and arm recipes ----
+    f.add("dotlessi", k.lstem(0, xh), "optical")
+    f.add(glyph_name(0x0237), [stroke(d, [(jc, xh - 6, 270), (jc, 15, 270), (jc - 92, low, 180), (jc - 182, low + 28, 155, 0.8)]),
+                               *k.ball(jc - 150, low + 12, 40), *([head(d, 0, V, xh)] if S else [])], "optical")
+    f.add("thorn", [*k.lstem(0, asc, desc), bowl_right(412)], "optical")
+    th_top, th_bot = cap * 0.76, cap * 0.26
+    f.add("Thorn", [*k.cstem(0), cs([(CV - 5, th_top, 0), (268, th_top, 0), (440, (th_top + th_bot) / 2, 270), (258, th_bot, 180), (CV - 5, th_bot, 180)])], "optical")
+    eth_top = xh * 0.88
+    eth_cy = (eth_top + B) / 2
+    f.add("eth", [stroke(d, [(200, B, 0), (400, eth_cy, 90), (200, eth_top, 180), (0, eth_cy, 270)], closed=True),
+                  stroke(d, [(385, eth_cy + 40, 100), (250, asc - 70, 138, 0.72)]),
+                  poly((150, asc - 200), (178, asc - 200 - max(H, V * 0.5)), (390, asc - 88 - max(H, V * 0.5)), (362, asc - 88))], "optical")
+    sharp_stem = [*k.lstem(0, asc - 60, top_serif=False, foot_serif=True)]
+    f.add("germandbls", [*sharp_stem,
+                         stroke(d, [(V / 2, asc - 180, 90), (205, asc + d.os - H / 2, 0), (365, asc - 190, 270), (195, xh * 0.62, 190, 0.82)]),
+                         stroke(d, [(195, xh * 0.62, 10, 0.82), (408, xh * 0.28, 270), (205, B, 180), (96, 62, 160, 0.72)])], "optical")
+    f.add("uni1E9E", [*k.cstem(0), rect(0, cap - CH, 410, cap), poly((410, cap), (410, cap - CH), (300, ccy + 40), (205, ccy + 40)),
+                      cs([(205, ccy + 40, 0), (440, (ccy + 40) / 2, 270), (250, bot_b, 180), (CV - 5, bot_b, 180)])], "optical")
 
     # ---- Figures: tabular, so columns of numbers line up ------------------------------------------
     ADV = 540

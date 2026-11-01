@@ -110,7 +110,8 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
                 result.warnings.append(f"{gname}: extends far above ascender ({bounds[3]:.0f})")
             if bounds[1] < spec.descender - spec.upm * 0.5:
                 result.warnings.append(f"{gname}: extends far below descender ({bounds[1]:.0f})")
-        if src.width is not None and src.width <= 0:
+        is_mark = any(name.startswith("_") for name in src.anchors)
+        if src.width is not None and src.width <= 0 and not is_mark:
             result.errors.append(f"{gname}: non-positive advance ({src.width})")
         elif src.width is not None:
             advances.append(src.width)

@@ -37,6 +37,10 @@ These sheet settings choose letter construction, so most briefs need no drawing.
 
 Stems keep their weight at any width, so change proportions here instead of scaling outlines.
 
+## Accents
+
+Marks are drawn once, and anchors are worked out from each letter's outline, so most accents need no attention. If one sits off-centre, set it in the sheet with `shape.anchors`, such as `{"r": {"top": 210}}`. Check `detail-core.png` and the language lines in `review.png`, especially around `r`, `a`, `t`, `Å` and letters with ogoneks.
+
 ## Sheet values
 
 - `stem`, `cap_stem`: vertical strokes. Capitals are about 8-10% heavier, so they look equal next to lowercase.

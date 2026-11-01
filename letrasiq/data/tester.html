@@ -201,7 +201,7 @@ function render() {
     chars.push(d);
   }
   $("chars").replaceChildren(...chars);
-  $("charsTitle").textContent = `Character set: ${count} of 95 printable ASCII characters drawn`;
+  $("charsTitle").textContent = `Basic Latin: ${count} of 95 printable ASCII characters drawn`;
 }
 function seg(id, key) {
   $(id).addEventListener("click", (e) => {

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from letrasiq.check import check_font
 from letrasiq.drawing import Design, Drawing, poly, rect, stroke, tidy, union
-from letrasiq.glyph import ASCII_GLYPHS, GlyphSource, glyph_char, glyph_filename
+from letrasiq.glyph import ASCII_GLYPHS, GlyphSource, glyph_char, glyph_filename, glyph_name_from_path
 from letrasiq.pipeline import build_font
 from letrasiq.quality import quality_warnings, stem_at
 
@@ -22,6 +22,15 @@ def verbs(path) -> list[str]:
 def test_ascii_set_covers_every_printable_character():
     assert len(ASCII_GLYPHS) == 95
     assert {glyph_char(n) for n in ASCII_GLYPHS} == {chr(c) for c in range(32, 127)}
+
+
+def test_glyph_files_cannot_collide_on_case_insensitive_disks():
+    names = ["A", "a", "Aacute", "aacute", "AE", "ae", "OE", "oe", "Germandbls", "germandbls", "uni1E9E"]
+    files = [glyph_filename(n).lower() for n in names]
+    assert len(set(files)) == len(names)
+    assert glyph_filename("A") == "A_.json"
+    for n in names:
+        assert glyph_name_from_path(Path(glyph_filename(n))) == n
 
 
 def test_stroke_outlines_are_real_curves():

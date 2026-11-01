@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import math
+import unicodedata
 
 import pathops
 
 from letrasiq.drawing import Design, _bez
 from letrasiq.outline import path_bounds, svg_path_to_pathops, to_cubic_path
-from letrasiq.glyph import GlyphSource
+from letrasiq.glyph import GlyphSource, glyph_char
 
 Point = tuple[float, float]
 
@@ -113,7 +114,10 @@ def quality_warnings(sources: dict[str, GlyphSource], d: Design) -> list[str]:
     warnings: list[str] = []
     paths = {n: svg_path_to_pathops(s.path or "") for n, s in sources.items() if s.type == "drawn" and n != "space"}
     for name, path in paths.items():
-        warnings.extend(_outline_problems(name, path))
+        # An accented letter's problems are its base letter's, so report them once.
+        char = glyph_char(name)
+        if not (char and len(unicodedata.decomposition(char).split()) == 2 and not unicodedata.decomposition(char).startswith("<")):
+            warnings.extend(_outline_problems(name, path))
 
     # Serif tips and rounds that nearly touch show up first in doubled letters.
     if not d.advance:
