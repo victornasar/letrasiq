@@ -1,0 +1,35 @@
+{
+  "brief": "A warm humanist sans for interfaces and text: friendly and clear, not corporate, with some calligraphic life. Must work at 13-16 px and in paragraphs.",
+  "values": {
+    "stem": 90,
+    "thin": 72,
+    "cap_stem": 98,
+    "cap_thin": 80,
+    "stress_deg": -10,
+    "overshoot": 12,
+    "figure_height": 690,
+    "join": 0.5,
+    "tension": 1.0,
+    "space": 245,
+    "kern_gap": 95
+  },
+  "spacing": {
+    "S": 76,
+    "R": 42,
+    "O": 30,
+    "D": 12,
+    "T": 16
+  },
+  "why": {
+    "x_height": "520/1000 is generous, so letters stay open and legible at interface sizes.",
+    "stem": "90 is a regular weight that holds up on screen; raised from 86 after the drawing test looked light.",
+    "thin": "72 (a 0.8 ratio) is low contrast, enough to feel drawn but not to thin out at 13 px.",
+    "stress_deg": "-10 tilts the axis like a broad-nib pen, which supplies the calligraphic warmth.",
+    "join": "Arches thin to half width at stems, which keeps n, m and r counters open at small sizes.",
+    "proportions": "Round capitals are wide and E, F, L, S and B narrow, following classical humanist proportions.",
+    "apertures": "Open terminals on a, c, e and s stop those letters closing up at small sizes.",
+    "kern_gap": "95 sits between round-round (84) and stem-stem (152) spacing, so open pairs like A V and T o close up without crowding.",
+    "l_tail": "The lowercase l has a small tail so l, I and 1 stay distinct in interface text."
+  },
+  "samples": {}
+}

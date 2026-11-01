@@ -9,7 +9,8 @@ import pathops
 
 from letrasiq.cleanup import cleanup_path
 from letrasiq.compile import build_ufo, compile_otf_ttf, ensure_ofl, set_name_table_license
-from letrasiq.expand import expand_glyph, path_bounds
+from letrasiq.drawing import load_design, regenerate_drawn
+from letrasiq.expand import expand_glyph, path_bounds, svg_path_to_pathops
 from letrasiq.glyph import (
     GlyphSource,
     MVP_GLYPHS,
@@ -18,10 +19,11 @@ from letrasiq.glyph import (
     load_locked,
 )
 from letrasiq.kerning import build_kerning
-from letrasiq.preview import render_specimen
+from letrasiq.preview import render_detail, render_review, render_specimen
 from letrasiq.spacing import advance_width, shift_path
 from letrasiq.spec import FontSpec
 from letrasiq.templates import build_mvp_glyphs
+from letrasiq.tester import render_tester
 
 
 def fonts_root(start: Path | None = None) -> Path:
@@ -96,14 +98,18 @@ def build_font(
         raise FileNotFoundError(f"Font not found: {d}")
     spec = FontSpec.load(d / "spec.json")
     locked = load_locked(d / "locked.txt")
+    drawn_font = (d / "draw.py").exists()
+    if drawn_font:
+        regenerate_drawn(d, spec, locked)
     sources = _load_glyph_sources(d)
 
-    # Ensure MVP coverage: fill missing from templates (unless locked missing — still generate)
-    templates = build_mvp_glyphs(spec)
-    for gname in MVP_GLYPHS:
-        if gname not in sources:
-            sources[gname] = templates[gname]
-            sources[gname].save(d / "glyphs" / glyph_filename(gname))
+    if not drawn_font:
+        # Ensure MVP coverage: fill missing from templates (unless locked missing — still generate)
+        templates = build_mvp_glyphs(spec)
+        for gname in MVP_GLYPHS:
+            if gname not in sources:
+                sources[gname] = templates[gname]
+                sources[gname].save(d / "glyphs" / glyph_filename(gname))
 
     # Partial rebuild: still need all glyphs for font compile, but regenerate
     # parametric unlocked ones always from current skeleton+spec.
@@ -128,7 +134,12 @@ def build_font(
             pass
 
         if gname == "space":
-            placed[gname] = (pathops.Path(), spec.space_advance())
+            placed[gname] = (pathops.Path(), src.width or spec.space_advance())
+            continue
+
+        if src.type == "drawn":
+            # Already spaced and tidied by draw.py.
+            placed[gname] = (svg_path_to_pathops(src.path or ""), src.width or 0)
             continue
 
         path = expand_glyph(src, spec)
@@ -141,7 +152,10 @@ def build_font(
             path = shift_path(path, dx)
         placed[gname] = (path, adv)
 
-    kern = build_kerning(placed, target_gap=spec.stroke_base() * 0.55)
+    if drawn_font:
+        kern = build_kerning(placed, target_gap=load_design(d, spec).kern_gap, damping=0.75, clamp=(-90.0, 0.0))
+    else:
+        kern = build_kerning(placed, target_gap=spec.stroke_base() * 0.55)
     ufo = build_ufo(spec, placed, kerning=kern)
 
     build_dir = d / "build"
@@ -158,6 +172,10 @@ def build_font(
 
     if not skip_preview:
         outputs["preview"] = render_specimen(d, spec)
+        if drawn_font:
+            outputs["review"] = render_review(d, spec)
+            outputs["detail"] = render_detail(d, spec)
+            outputs["tester"] = render_tester(d, spec)
 
     return outputs
 

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pathops
 
-from letrasiq.expand import path_bounds
+from letrasiq.expand import path_bounds, to_cubic_path
 from letrasiq.glyph import DIGIT_NAMES
 
 
@@ -45,84 +45,50 @@ def load_kern_pairs() -> list[tuple[str, str]]:
     return pairs
 
 
-def _sample_right_edge(path: pathops.Path, y_min: float, y_max: float, steps: int = 24) -> list[float]:
-    """For each y sample, find max x of the path (approx via bounds strip)."""
-    bounds = path_bounds(path)
-    if bounds is None:
-        return []
-    # Approximate: use overall right edge; refine with vertical strips via point cloud
-    pts: list[tuple[float, float]] = []
+def _contours(path: pathops.Path) -> list[list[tuple[float, float]]]:
+    """Each closed contour as a polyline that follows its curves."""
+    contours: list[list[tuple[float, float]]] = []
+    cur: list[tuple[float, float]] = []
+    for verb, pts in to_cubic_path(path).segments:
+        if verb == "moveTo":
+            cur = [pts[0]]
+        elif verb == "lineTo":
+            cur.append(pts[0])
+        elif verb == "curveTo":
+            p0, (c1, c2, p) = cur[-1], pts
+            for i in range(1, 13):
+                t, u = i / 12, 1 - i / 12
+                cur.append((
+                    u**3 * p0[0] + 3 * u * u * t * c1[0] + 3 * u * t * t * c2[0] + t**3 * p[0],
+                    u**3 * p0[1] + 3 * u * u * t * c1[1] + 3 * u * t * t * c2[1] + t**3 * p[1],
+                ))
+        elif verb == "closePath":
+            contours.append(cur)
+    return contours
 
-    class _Pen:
-        def moveTo(self, pt):  # noqa: N802
-            pts.append(pt)
 
-        def lineTo(self, pt):  # noqa: N802
-            pts.append(pt)
-
-        def curveTo(self, *args):  # noqa: N802
-            pts.extend(args)
-
-        def qCurveTo(self, *args):  # noqa: N802
-            pts.extend(a for a in args if a is not None)
-
-        def closePath(self):  # noqa: N802
-            pass
-
-        def endPath(self):  # noqa: N802
-            pass
-
-    path.draw(_Pen())
-    if not pts:
-        return []
-    edges: list[float] = []
+def _edge(path: pathops.Path, y_min: float, y_max: float, pick, steps: int = 24) -> list[float | None]:
+    """Outermost x where the outline crosses each height; None where it has no ink."""
+    contours = _contours(path)
+    edges: list[float | None] = []
     for i in range(steps):
         y = y_min + (y_max - y_min) * (i + 0.5) / steps
-        band = [p[0] for p in pts if abs(p[1] - y) <= (y_max - y_min) / steps]
-        if band:
-            edges.append(max(band))
-        else:
-            edges.append(bounds[2])
+        xs = [
+            a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])
+            for c in contours
+            for a, b in zip(c, c[1:] + c[:1])
+            if (a[1] <= y) != (b[1] <= y)
+        ]
+        edges.append(pick(xs) if xs else None)
     return edges
 
 
-def _sample_left_edge(path: pathops.Path, y_min: float, y_max: float, steps: int = 24) -> list[float]:
-    bounds = path_bounds(path)
-    if bounds is None:
-        return []
-    pts: list[tuple[float, float]] = []
+def _sample_right_edge(path: pathops.Path, y_min: float, y_max: float, steps: int = 24) -> list[float | None]:
+    return _edge(path, y_min, y_max, max, steps)
 
-    class _Pen:
-        def moveTo(self, pt):  # noqa: N802
-            pts.append(pt)
 
-        def lineTo(self, pt):  # noqa: N802
-            pts.append(pt)
-
-        def curveTo(self, *args):  # noqa: N802
-            pts.extend(args)
-
-        def qCurveTo(self, *args):  # noqa: N802
-            pts.extend(a for a in args if a is not None)
-
-        def closePath(self):  # noqa: N802
-            pass
-
-        def endPath(self):  # noqa: N802
-            pass
-
-    path.draw(_Pen())
-    if not pts:
-        return []
-    edges: list[float] = []
-    for i in range(steps):
-        y = y_min + (y_max - y_min) * (i + 0.5) / steps
-        band = [p[0] for p in pts if abs(p[1] - y) <= (y_max - y_min) / steps]
-        if band:
-            edges.append(min(band))
-        else:
-            edges.append(bounds[0])
-    return edges
+def _sample_left_edge(path: pathops.Path, y_min: float, y_max: float, steps: int = 24) -> list[float | None]:
+    return _edge(path, y_min, y_max, min, steps)
 
 
 def kern_value(
@@ -131,6 +97,7 @@ def kern_value(
     right_path: pathops.Path,
     target_gap: float = 40.0,
     clamp: tuple[float, float] = (-120.0, 0.0),
+    damping: float = 1.0,
 ) -> int:
     """Negative kern so contour distance approaches target_gap."""
     lb = path_bounds(left_path)
@@ -143,18 +110,16 @@ def kern_value(
         return 0
     right_edge = _sample_right_edge(left_path, y_min, y_max)
     left_edge = _sample_left_edge(right_path, y_min, y_max)
-    if not right_edge or not left_edge:
-        return 0
     # Distance when glyphs are placed at advance: left_edge + advance - right_edge
     gaps = [
-        (left_advance + le) - re for re, le in zip(right_edge, left_edge, strict=False)
+        (left_advance + le) - re
+        for re, le in zip(right_edge, left_edge, strict=False)
+        if re is not None and le is not None
     ]
-    min_gap = min(gaps)
-    # If min_gap > target, kern less negative (or 0); if smaller, pull together
-    delta = target_gap - min_gap
-    # delta positive means too tight → wait, if min_gap is small, we need more negative kern
-    # kern k: new gap = min_gap + k; want min_gap + k ≈ target → k = target - min_gap
-    k = target_gap - min_gap
+    if not gaps:
+        return 0
+    # New gap = min_gap + k, so k = target - min_gap reaches the target gap.
+    k = (target_gap - min(gaps)) * damping
     k = max(clamp[0], min(clamp[1], k))
     return int(round(k))
 
@@ -162,6 +127,8 @@ def kern_value(
 def build_kerning(
     placed: dict[str, tuple[pathops.Path, int]],
     target_gap: float = 40.0,
+    damping: float = 1.0,
+    clamp: tuple[float, float] = (-120.0, 0.0),
 ) -> dict[tuple[str, str], int]:
     kern: dict[tuple[str, str], int] = {}
     for left, right in load_kern_pairs():
@@ -169,7 +136,7 @@ def build_kerning(
             continue
         lp, la = placed[left]
         rp, _ = placed[right]
-        val = kern_value(lp, la, rp, target_gap=target_gap)
+        val = kern_value(lp, la, rp, target_gap=target_gap, clamp=clamp, damping=damping)
         if val:
             kern[(left, right)] = val
     return kern

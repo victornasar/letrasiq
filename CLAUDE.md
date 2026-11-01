@@ -6,6 +6,12 @@ Always work from the repo root with the project venv active (`source .venv/bin/a
 
 ---
 
+## Drawn fonts (new; replacing parametric templates)
+
+Fonts with a `draw.py` are drawn as real Bézier outlines and cover full printable ASCII. Read `letrasiq/data/craft.md` first, then see `fonts/letra-humanist/` for the pattern: `design.json` holds the brief, values and reasons, and `draw.py` builds glyphs with `letrasiq/drawing.py`. `build` regenerates `glyphs/*.json` from `draw.py`, except names in `locked.txt`. The human's review step is `build/previews/tester.html`. The rest of this guide still describes parametric fonts until the rebuild finishes.
+
+---
+
 ## Mental model
 
 | Path | Role |

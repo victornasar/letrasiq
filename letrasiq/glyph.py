@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-GlyphType = Literal["parametric", "custom"]
+GlyphType = Literal["parametric", "custom", "drawn"]
 
 # MVP charset — Adobe Glyph List-ish names
 MVP_GLYPHS: tuple[str, ...] = (
@@ -37,6 +37,42 @@ MVP_GLYPHS: tuple[str, ...] = (
     "parenright",
     "hyphen",
 )
+
+# Full printable ASCII, for fonts drawn with draw.py
+ASCII_SYMBOLS: dict[str, str] = {
+    "exclam": "!",
+    "quotedbl": '"',
+    "numbersign": "#",
+    "dollar": "$",
+    "percent": "%",
+    "ampersand": "&",
+    "quotesingle": "'",
+    "parenleft": "(",
+    "parenright": ")",
+    "asterisk": "*",
+    "plus": "+",
+    "comma": ",",
+    "hyphen": "-",
+    "period": ".",
+    "slash": "/",
+    "colon": ":",
+    "semicolon": ";",
+    "less": "<",
+    "equal": "=",
+    "greater": ">",
+    "question": "?",
+    "at": "@",
+    "bracketleft": "[",
+    "backslash": "\\",
+    "bracketright": "]",
+    "asciicircum": "^",
+    "underscore": "_",
+    "grave": "`",
+    "braceleft": "{",
+    "bar": "|",
+    "braceright": "}",
+    "asciitilde": "~",
+}
 
 DIGIT_NAMES = {
     "0": "zero",
@@ -67,6 +103,20 @@ PUNCT_CHARS = {
 }
 
 
+ASCII_GLYPHS: tuple[str, ...] = (
+    "space",
+    *list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
+    *list("abcdefghijklmnopqrstuvwxyz"),
+    *DIGIT_NAMES.values(),
+    *ASCII_SYMBOLS,
+)
+
+
+def expected_glyphs(font_dir: Path) -> tuple[str, ...]:
+    """Fonts with a draw.py cover full ASCII; older parametric fonts cover the MVP set."""
+    return ASCII_GLYPHS if (font_dir / "draw.py").exists() else MVP_GLYPHS
+
+
 @dataclass
 class Stroke:
     kind: Literal["stroke", "curve"]
@@ -84,8 +134,8 @@ class GlyphSource:
     width: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        if self.type == "custom":
-            data: dict[str, Any] = {"type": "custom", "path": self.path or ""}
+        if self.type in ("custom", "drawn"):
+            data: dict[str, Any] = {"type": self.type, "path": self.path or ""}
             if self.width is not None:
                 data["width"] = self.width
             return data
@@ -105,10 +155,10 @@ class GlyphSource:
     @classmethod
     def from_dict(cls, name: str, data: dict[str, Any]) -> GlyphSource:
         gtype = data.get("type", "parametric")
-        if gtype == "custom":
+        if gtype in ("custom", "drawn"):
             return cls(
                 name=name,
-                type="custom",
+                type=gtype,
                 path=data.get("path", ""),
                 width=data.get("width"),
             )
@@ -139,6 +189,8 @@ def glyph_char(name: str) -> str | None:
         return name
     if name in PUNCT_CHARS:
         return PUNCT_CHARS[name]
+    if name in ASCII_SYMBOLS:
+        return ASCII_SYMBOLS[name]
     for digit, gname in DIGIT_NAMES.items():
         if gname == name:
             return digit
@@ -174,7 +226,7 @@ _SAFE_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_.]*$")
 
 
 def assert_safe_glyph_name(name: str) -> None:
-    if not _SAFE_NAME.match(name) and name not in MVP_GLYPHS:
+    if not _SAFE_NAME.match(name) and name not in ASCII_GLYPHS:
         # allow single-letter and known MVP names; reject path tricks
         if not (len(name) == 1 and name.isalpha()):
             raise ValueError(f"unsafe glyph name: {name!r}")

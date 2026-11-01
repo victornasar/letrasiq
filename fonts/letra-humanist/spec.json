@@ -1,0 +1,15 @@
+{
+  "name": "letra-humanist",
+  "version": "0.1.0",
+  "style_name": "Regular",
+  "upm": 1000,
+  "ascender": 760,
+  "descender": -205,
+  "x_height": 520,
+  "cap_height": 710,
+  "baseline": 0,
+  "mood": "warm, clear, friendly",
+  "notes": "Drawn with draw.py from design.json; knob fields are not used.",
+  "classification": "sans-serif",
+  "subtype": "humanistic"
+}

@@ -7,7 +7,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 from fontTools.ttLib import TTFont
 
-from letrasiq.glyph import MVP_GLYPHS, glyph_char
+from letrasiq.expand import svg_path_to_pathops, to_cubic_path
+from letrasiq.glyph import GlyphSource, expected_glyphs, glyph_char, glyph_filename
 from letrasiq.spec import FontSpec
 
 PANGRAM = "The quick brown fox jumps over the lazy dog."
@@ -44,7 +45,7 @@ def render_specimen(
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_path or (out_dir / "specimen.png")
 
-    W, H = 1400, 1800
+    W, H = 1400, 2100
     img = Image.new("RGB", (W, H), (250, 248, 244))
     draw = ImageDraw.Draw(img)
 
@@ -56,7 +57,7 @@ def render_specimen(
     y = 40
     draw.text((48, y), spec.family_name(), fill=(20, 20, 20), font=title_font)
     y += 90
-    draw.text((48, y), f"{spec.style_name} · v{spec.version} · {spec.mood}", fill=(90, 90, 90), font=small)
+    draw.text((48, y), f"{spec.style_name} - v{spec.version}", fill=(90, 90, 90), font=small)
     y += 50
 
     caps = "".join(c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -91,7 +92,7 @@ def render_specimen(
     y += 40
     # grid of MVP printable glyphs
     chars = []
-    for name in MVP_GLYPHS:
+    for name in expected_glyphs(font_dir):
         ch = glyph_char(name)
         if ch and ch != " ":
             chars.append(ch)
@@ -108,6 +109,100 @@ def render_specimen(
 
     img.save(out_path, "PNG")
     return out_path
+
+
+READING = (
+    "The quick brown fox jumps over the lazy dog while a mild breeze carries the smell of "
+    "rain across the valley. Good type stays out of the way: words hold together, spacing "
+    "feels even, and the eye moves along each line without stopping. Sphinx of black quartz, "
+    "judge my vow. (Figures: 0123456789, $48.50 & 72% - really?)"
+)
+REVIEW_LINES = [
+    ("Hamburgefonstiv", 150),
+    ("ABCDEFGHIJKLM", 110),
+    ("NOPQRSTUVWXYZ", 110),
+    ("abcdefghijklm", 110),
+    ("nopqrstuvwxyz", 110),
+    ("0123456789", 110),
+    ("!\"#$%&'()*+,-./:;<=>?", 80),
+    ("@[\\]^_`{|}~", 80),
+    ("minimum illicit Tower AVATAR Typography Wave", 62),
+]
+
+
+def render_review(font_dir: Path, spec: FontSpec | None = None) -> Path:
+    """Large letters plus real text at several sizes, for judging shape and spacing."""
+    spec = spec or FontSpec.load(font_dir / "spec.json")
+    build_dir = font_dir / "build"
+    font_path = _pick_font_file(build_dir, spec.family_name(), spec.style_name)
+    W = 1500
+    img = Image.new("RGB", (W, 2400), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    y = 24
+    for text, size in REVIEW_LINES:
+        draw.text((40, y), text, font=_load_pillow_font(font_path, size), fill=(15, 15, 15))
+        y += int(size * 1.3)
+    for size in (28, 20, 16, 13):
+        font = _load_pillow_font(font_path, size)
+        line, lines = "", []
+        for word in READING.split():
+            test = (line + " " + word).strip()
+            if font.getlength(test) > 900:
+                lines.append(line)
+                line = word
+            else:
+                line = test
+        lines.append(line)
+        for ln in lines:
+            draw.text((40, y), ln, font=font, fill=(15, 15, 15))
+            y += int(size * 1.45)
+        y += 18
+    out = build_dir / "previews" / "review.png"
+    img.crop((0, 0, W, y + 10)).save(out, "PNG")
+    return out
+
+
+def render_detail(font_dir: Path, spec: FontSpec | None = None) -> Path:
+    """Every glyph's outline with its on-curve points, for inspecting construction."""
+    spec = spec or FontSpec.load(font_dir / "spec.json")
+    names = [n for n in expected_glyphs(font_dir) if n != "space"]
+    scale, cols, cw, ch = 0.2, 10, 190, 225
+    rows = (len(names) + cols - 1) // cols
+    img = Image.new("RGB", (cols * cw, rows * ch), (255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    for i, name in enumerate(names):
+        ox, oy = (i % cols) * cw + 10, (i // cols) * ch + 165
+        draw.line([(ox - 4, oy), (ox + cw - 18, oy)], fill=(190, 205, 225))
+        xh = oy - spec.x_height * scale
+        draw.line([(ox - 4, xh), (ox + cw - 18, xh)], fill=(190, 205, 225))
+        source = font_dir / "glyphs" / glyph_filename(name)
+        if not source.exists():
+            continue
+        path = to_cubic_path(svg_path_to_pathops(GlyphSource.load(source).path or ""))
+        last = start = None
+        for verb, pts in path.segments:
+            if verb == "moveTo":
+                last = start = pts[0]
+            elif verb == "lineTo":
+                draw.line([(ox + last[0] * scale, oy - last[1] * scale), (ox + pts[0][0] * scale, oy - pts[0][1] * scale)], fill=(20, 20, 20))
+                last = pts[0]
+            elif verb == "curveTo":
+                line = []
+                for k in range(17):
+                    t, u = k / 16, 1 - k / 16
+                    x = u**3 * last[0] + 3 * u * u * t * pts[0][0] + 3 * u * t * t * pts[1][0] + t**3 * pts[2][0]
+                    y = u**3 * last[1] + 3 * u * u * t * pts[0][1] + 3 * u * t * t * pts[1][1] + t**3 * pts[2][1]
+                    line.append((ox + x * scale, oy - y * scale))
+                draw.line(line, fill=(20, 20, 20))
+                last = pts[2]
+            elif verb == "closePath" and last != start:
+                draw.line([(ox + last[0] * scale, oy - last[1] * scale), (ox + start[0] * scale, oy - start[1] * scale)], fill=(20, 20, 20))
+            if verb in ("moveTo", "lineTo", "curveTo"):
+                p = pts[-1]
+                draw.rectangle([ox + p[0] * scale - 1, oy - p[1] * scale - 1, ox + p[0] * scale + 1, oy - p[1] * scale + 1], fill=(214, 60, 40))
+    out = font_dir / "build" / "previews" / "detail.png"
+    img.save(out, "PNG")
+    return out
 
 
 def render_compare_sheet(

@@ -220,7 +220,7 @@ def path_bounds(path: pathops.Path) -> tuple[float, float, float, float] | None:
 
 
 def expand_glyph(glyph: GlyphSource, spec: FontSpec) -> pathops.Path:
-    if glyph.type == "custom":
+    if glyph.type in ("custom", "drawn"):
         return svg_path_to_pathops(glyph.path or "")
 
     weight_scale = float(glyph.overrides.get("weight_scale", 1.0))

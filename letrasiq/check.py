@@ -9,9 +9,11 @@ import pathops
 from fontTools.ttLib import TTFont
 
 from letrasiq.cleanup import cleanup_path
-from letrasiq.expand import expand_glyph, path_bounds
-from letrasiq.glyph import MVP_GLYPHS, load_locked
+from letrasiq.drawing import load_design
+from letrasiq.expand import expand_glyph, path_bounds, svg_path_to_pathops
+from letrasiq.glyph import expected_glyphs, load_locked
 from letrasiq.pipeline import font_dir, load_glyph_sources
+from letrasiq.quality import quality_warnings
 from letrasiq.spacing import advance_width
 from letrasiq.spec import FontSpec
 
@@ -69,8 +71,10 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
     for err in spec.validate():
         result.errors.append(f"spec: {err}")
 
-    for w in spec.classification_warnings():
-        result.warnings.append(w)
+    # Engine-support notes describe parametric templates, which draw.py fonts don't use.
+    if not (d / "draw.py").exists():
+        for w in spec.classification_warnings():
+            result.warnings.append(w)
 
     if spec.name != name:
         result.warnings.append(f"spec.name ({spec.name!r}) != folder name ({name!r})")
@@ -78,8 +82,9 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
     sources = load_glyph_sources(d)
     locked = load_locked(d / "locked.txt")
 
-    # All MVP glyphs present
-    missing = [g for g in MVP_GLYPHS if g not in sources]
+    # All expected glyphs present
+    expected = expected_glyphs(d)
+    missing = [g for g in expected if g not in sources]
     if missing:
         result.errors.append(f"missing glyphs ({len(missing)}): {', '.join(missing[:12])}"
                              + ("…" if len(missing) > 12 else ""))
@@ -97,6 +102,18 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
             if adv <= 0:
                 result.errors.append("space advance must be > 0")
             advances.append(adv)
+            continue
+
+        if src.type == "drawn":
+            path = svg_path_to_pathops(src.path or "")
+            if not path:
+                result.errors.append(f"{gname}: drawn glyph has empty path")
+            elif _contour_is_open(path):
+                result.errors.append(f"{gname}: open contour")
+            if not src.width or src.width <= 0:
+                result.errors.append(f"{gname}: non-positive advance ({src.width})")
+            else:
+                advances.append(src.width)
             continue
 
         if src.type == "custom":
@@ -162,7 +179,7 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
         try:
             ft = TTFont(font_path)
             order = set(ft.getGlyphOrder())
-            for gname in MVP_GLYPHS:
+            for gname in expected:
                 if gname not in order:
                     result.errors.append(f"compiled font missing glyph: {gname}")
             cmap = ft.getBestCmap() or {}
@@ -177,6 +194,9 @@ def check_font(name: str, root: Path | None = None) -> CheckResult:
                     )
         except Exception as e:
             result.errors.append(f"failed to open compiled font: {e}")
+
+    if (d / "draw.py").exists():
+        result.warnings.extend(quality_warnings(sources, load_design(d, spec)))
 
     if not (d / "OFL.txt").exists():
         result.warnings.append("missing OFL.txt")
