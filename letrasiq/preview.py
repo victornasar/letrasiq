@@ -123,6 +123,10 @@ REVIEW_LINES = [
     ("HHHOHHHOHHOOHH", 72),
     ("nanbncndnengnhnknmnpnrnsntnunvnwnxnynz", 44),
     ("HAHBHCHDHEHFHGHKHLHMHNHPHQHRHSHTHUHVHWHXHYHZ", 40),
+    ("n.n,n:n;n!n?n'n\"n-n–n—n(n)n[n]n{n}n/n&n", 44),
+    ("H.H,H:H;H!H?H'H\"H-H(H)H[H]H{H}H/H&H", 44),
+    ("H0H1H2H3H4H5H6H7H8H9H n0n1n2n3n4n5n6n7n8n9n", 40),
+    ("ncndnendnéngñoöþnßn nænœnøn «n» ‹n› “n” ‘n’ „n“", 44),
     ("ABCDEFGHIJKLM", 110),
     ("NOPQRSTUVWXYZ", 110),
     ("abcdefghijklm", 110),
@@ -143,7 +147,7 @@ def render_review(font_dir: Path, spec: FontSpec | None = None) -> Path:
     build_dir = font_dir / "build"
     font_path = _pick_font_file(build_dir, spec.family_name(), spec.style_name)
     W = 1500
-    img = Image.new("RGB", (W, 2400), (255, 255, 255))
+    img = Image.new("RGB", (W, 3600), (255, 255, 255))
     draw = ImageDraw.Draw(img)
     y = 24
     for text, size in REVIEW_LINES:

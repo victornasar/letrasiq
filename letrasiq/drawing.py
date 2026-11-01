@@ -525,6 +525,11 @@ def tidy(path: pathops.Path) -> pathops.Path:
     return out
 
 
+# Recipes give symbol spacing at this stem spacing, so symbols follow each sheet's overall value.
+SPACING_REFERENCE = 76.0
+MAX_OVERHANG = 0.3
+
+
 @dataclass
 class Placed:
     path: pathops.Path
@@ -540,7 +545,10 @@ class Drawing:
         self.glyphs: dict[str, Placed] = {"space": Placed(pathops.Path(), d.space)}
 
     def _sb(self, v: float | str) -> float:
-        return self.d.spacing[v] if isinstance(v, str) else float(v)
+        """A sidebearing from a sheet token, or a value relative to a stem spacing of 76."""
+        if isinstance(v, str):
+            return self.d.spacing[v]
+        return float(v) * self.d.spacing.get("S", SPACING_REFERENCE) / SPACING_REFERENCE
 
     def _optical_side(self, path: pathops.Path, top: float, pick: Any) -> tuple[float, float]:
         """Sidebearing that balances this side's white space, and the edge it measures from.
@@ -574,7 +582,9 @@ class Drawing:
             left, left_edge = self._optical_side(path, top, min)
             right, right_edge = self._optical_side(path, top, max)
             dx = left - left_edge
-            width = round(right_edge + dx + right)
+            # Parts above the measured zone, like the hook of f, may overhang only so far.
+            limit = x1 + dx - self.d.spacing["S"] * MAX_OVERHANG
+            width = round(max(right_edge + dx + right, limit))
             self.glyphs[name] = Placed(tidy(path.transform(1, 0, 0, 1, dx, 0)), width)
             return
         sb = sb or (40, 40)

@@ -33,6 +33,25 @@ def test_glyph_files_cannot_collide_on_case_insensitive_disks():
         assert glyph_name_from_path(Path(glyph_filename(n))) == n
 
 
+def test_symbol_spacing_follows_the_sheet():
+    tight, loose = design(), design()
+    tight.spacing, loose.spacing = {"S": 38}, {"S": 76}
+    a, b = Drawing(tight), Drawing(loose)
+    a.add("period", [rect(0, 0, 100, 100)], (60, 60))
+    b.add("period", [rect(0, 0, 100, 100)], (60, 60))
+    assert a.glyphs["period"].width == 160 and b.glyphs["period"].width == 220
+
+
+def test_collision_check_finds_only_real_near_touches():
+    from letrasiq.quality import collisions
+
+    paths = {"n": rect(50, 0, 150, 500), "H": rect(50, 0, 150, 700), "x": rect(0, 0, 345, 500), "o": rect(40, 0, 160, 500)}
+    widths = {"n": 200, "H": 200, "x": 300, "o": 200}
+    found = collisions(paths, widths)
+    assert any(item.startswith("xn") for item in found)
+    assert not any(item.startswith("on") or item.startswith("no") for item in found)
+
+
 def test_stroke_outlines_are_real_curves():
     d = design()
     ring = stroke(d, [(200, 0, 0), (400, 250, 90), (200, 500, 180), (0, 250, 270)], closed=True)

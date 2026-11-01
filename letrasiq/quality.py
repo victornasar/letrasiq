@@ -8,6 +8,7 @@ import unicodedata
 import pathops
 
 from letrasiq.drawing import Design, _bez
+from letrasiq.kerning import _edge
 from letrasiq.outline import path_bounds, svg_path_to_pathops, to_cubic_path
 from letrasiq.glyph import GlyphSource, glyph_char
 
@@ -26,6 +27,7 @@ MONO_STEM_TOLERANCE = 0.2
 KINK_MIN_DEG, KINK_MAX_DEG = 4.0, 15.0
 TINY_SEGMENT = 3.0
 MIN_SELF_GAP = 34.0
+MIN_NEIGHBOUR_GAP = 12.0
 MIN_KINK_HANDLE = 20.0
 
 
@@ -108,6 +110,35 @@ def _outline_problems(name: str, path: pathops.Path) -> list[str]:
     if kinks:
         out.append(f"{name}: {kinks} slight kink(s) between curves")
     return out
+
+
+def collisions(paths: dict[str, pathops.Path], widths: dict[str, int], minimum: float = MIN_NEIGHBOUR_GAP) -> list[str]:
+    """Glyphs whose outline comes too close to n or H on either side, at any shared height."""
+    found: list[str] = []
+    probes = [p for p in ("n", "H") if p in paths]
+
+    def tightest(left: pathops.Path, width: int, right: pathops.Path) -> float | None:
+        lb, rb = left.bounds, right.bounds
+        low, high = max(lb[1], rb[1]), min(lb[3], rb[3])
+        if high <= low:
+            return None
+        gaps = [
+            width + a - b
+            for b, a in zip(_edge(left, low, high, max, 16), _edge(right, low, high, min, 16))
+            if a is not None and b is not None
+        ]
+        return min(gaps) if gaps else None
+
+    for name, path in paths.items():
+        if not path or widths.get(name, 0) == 0:
+            continue
+        for probe in probes:
+            after = tightest(path, widths[name], paths[probe])
+            before = tightest(paths[probe], widths[probe], path)
+            for side, gap in ((f"{name}{probe}", after), (f"{probe}{name}", before)):
+                if gap is not None and gap < minimum:
+                    found.append(f"{side} ({gap:.0f})")
+    return found
 
 
 def quality_warnings(sources: dict[str, GlyphSource], d: Design) -> list[str]:

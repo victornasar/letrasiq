@@ -17,6 +17,9 @@ from fontTools.ttLib import TTFont
 
 from letrasiq.check import check_font
 from letrasiq.drawing import Design, load_design
+from letrasiq.outline import svg_path_to_pathops
+from letrasiq.pipeline import load_glyph_sources
+from letrasiq.quality import collisions
 from letrasiq.spec import FontSpec
 
 PASSED, FAILED, PERSON = "passed", "failed", "needs a person"
@@ -185,6 +188,9 @@ def build_report(font_dir: Path, spec: FontSpec | None = None, run_font_bakery: 
         _stage("Reusable marks and anchors", "acutecomb" in glyphs, "Marks and anchors are in place.", "Not built yet. Planned in step 3."),
     ]
 
+    sources = load_glyph_sources(font_dir)
+    outlines = {n: svg_path_to_pathops(s.path or "") for n, s in sources.items()}
+    touching = collisions(outlines, {n: s.width or 0 for n, s in sources.items()})
     ufo = ufoLib2.Font.open(build / f"{stem}.ufo")
     if mono:
         kerning = [Stage("Kerning", PASSED, "Doesn't apply: every glyph has one width.")]
@@ -196,7 +202,8 @@ def build_report(font_dir: Path, spec: FontSpec | None = None, run_font_bakery: 
         ]
     spacing = [
         _stage("Letter spacing", design.spacing.get("S", 0) > 0 or mono, "Letters space from measured white space.", "No spacing value in the sheet."),
-        _not_built("Spacing for every glyph", "4"),
+        _stage("Spacing for every glyph", not touching, f"{sum(1 for s in sources.values() if s.path)} glyphs keep clear of n and H on both sides.",
+               f"{len(touching)} pairs nearly touch: {', '.join(touching[:12])}."),
         *kerning,
     ]
 

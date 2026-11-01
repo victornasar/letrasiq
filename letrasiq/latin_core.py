@@ -156,7 +156,10 @@ def add_latin_core(f: Drawing, d: Design) -> None:
                    0x0307: "dotaccent", 0x0308: "dieresis", 0x030A: "ring", 0x030B: "hungarumlaut", 0x030C: "caron"}[mark_code]
             mark = _moved(marks[key], dx=x, dy=y, sy=squash)
         name = glyph_name(code)
-        f.glyphs[name] = Placed(tidy(union(path, mark)), base.width)
+        # Marks that reach past the letter, like the short caron on d, keep their room.
+        reach = mark.bounds[2] + V * 0.15
+        width = base.width if d.advance else max(base.width, round(reach))
+        f.glyphs[name] = Placed(tidy(union(path, mark)), width)
 
     # ---- Combining marks and spacing accents ------------------------------------------------
     top_height = xh + GAP_LOWER
@@ -262,8 +265,8 @@ def add_latin_core(f: Drawing, d: Design) -> None:
     # ---- Punctuation -------------------------------------------------------------------------
     pw = H if d.serifs == "none" else V * 0.55
     dash_y = 218 * xh / 520
-    add(glyph_name(0x2013), [rect(0, dash_y, 500, dash_y + pw)], (0, 0))
-    add(glyph_name(0x2014), [rect(0, dash_y, 900, dash_y + pw)], (0, 0))
+    add(glyph_name(0x2013), [rect(0, dash_y, 500, dash_y + pw)], (24, 24))
+    add(glyph_name(0x2014), [rect(0, dash_y, 900, dash_y + pw)], (24, 24))
     add(glyph_name(0x2212), [rect(0, 300 * xh / 520 - pw / 2, 450, 300 * xh / 520 + pw / 2)], (45, 45))
 
     q_top = cap + 18
